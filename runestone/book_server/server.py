@@ -1,5 +1,4 @@
 from flask import Flask, Blueprint, render_template, send_from_directory, request, redirect
-from course import get_base, get_version
 import os.path
 
 from runestone import app

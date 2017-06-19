@@ -23,6 +23,6 @@ runestone/ -- The root of a python package (eventually distributed to pypi)
         server.py
     api
         __init__.py
-        ajax.py
+        endpoints.py
 ```
 
