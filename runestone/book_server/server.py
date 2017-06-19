@@ -16,7 +16,7 @@ def hello_world():
 def custom_static(course, filename):
     '''
     We have to efficiently serve all of the assets, this seems a common way to do so.
-    There is some mention of X-
+    There is some mention of X-sendfile header along with send_file and this should be investigated
     :param course:
     :param filename:
     :return:
