@@ -1,41 +1,31 @@
-from flask import Flask, render_template, send_from_directory, request, redirect
+from flask import Flask, Blueprint, render_template, send_from_directory, request, redirect
 from course import get_base, get_version
-import logging
 import os.path
-from flask_sqlalchemy import SQLAlchemy
 
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://millbr02:@localhost/runestone'
-db = SQLAlchemy(app)
-
-class Course(db.Model):
-    __tablename__ = 'courses'
-    id = db.Column(db.Integer, primary_key=True)
-    course_name = db.Column(db.String, unique=True)
-    term_start_date = db.Column(db.Date)
-    base_course = db.Column(db.String)
-    python3 = db.Column(db.Boolean)
-    login_required = db.Column(db.Boolean)
-
-db.create_all()
+from runestone import app
+from ..model import Course
 
 
-@app.route('/')
+book_server = Blueprint('book_server',__name__, template_folder='templates')
+
+@book_server.route('/')
 def hello_world():
     return 'Hello World!'
 
-@app.route('/runestone/<path:course>/_static/<path:filename>')
+@book_server.route('/runestone/<path:course>/_static/<path:filename>')
 def custom_static(course, filename):
     '''
-    We have to efficiently serve all of the assests, this seems a common way to do so.
+    We have to efficiently serve all of the assets, this seems a common way to do so.
+    There is some mention of X-
     :param course:
     :param filename:
     :return:
     '''
-    path = 'templates/thinkcspy/_static'
+    path = '/Users/bmiller/Runestone/server/runestone/book_server/templates/thinkcspy/_static'
+    app.logger.debug(filename)
     return send_from_directory(path, filename)
 
-@app.route('/runestone/<string:course>/<path:pageinfo>')
+@book_server.route('/runestone/<string:course>/<path:pageinfo>')
 def serve_page(course, pageinfo):
     '''
     Lookup information and fill in template information in eBookConfig.  Specifically:
@@ -61,7 +51,3 @@ def serve_page(course, pageinfo):
     template = os.path.join(base_course, pageinfo)
     return render_template(template, basecourse=base_course, python3=python3, login_required=login_required)
 
-
-
-if __name__ == '__main__':
-    app.run(debug=True)
