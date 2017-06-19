@@ -13,6 +13,7 @@ def hello_world():
     return 'Hello World!'
 
 @book_server.route('/runestone/<path:course>/_static/<path:filename>')
+@book_server.route('/runestone/<path:course>/_images/<path:filename>')
 def custom_static(course, filename):
     '''
     We have to efficiently serve all of the assets, this seems a common way to do so.
@@ -22,7 +23,7 @@ def custom_static(course, filename):
     :return:
     '''
     path = '/Users/bmiller/Runestone/server/runestone/book_server/templates/thinkcspy/_static'
-    app.logger.debug(filename)
+    app.logger.debug(request.url)
     return send_from_directory(path, filename)
 
 @book_server.route('/runestone/<string:course>/<path:pageinfo>')
@@ -42,7 +43,7 @@ def serve_page(course, pageinfo):
         return redirect(f'http://runestone/errors/nocourse/{course}')
 
     app.logger.debug(pageinfo)
-    app.logger.debug(type(the_course.python3))
+    
     base_course = the_course.base_course
     course_version = get_version(course)
     python3 = 'true' if the_course.python3 == 'T' else 'false'
