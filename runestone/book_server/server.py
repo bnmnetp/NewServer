@@ -1,18 +1,18 @@
-from flask import Flask, Blueprint, render_template, send_from_directory, request, redirect
+from flask import Blueprint, render_template, send_from_directory, request, redirect
 import os.path
 
 from runestone import app
 from ..model import Course
 
 
-book_server = Blueprint('book_server',__name__, template_folder='templates')
+book_server = Blueprint('book_server',__name__, template_folder='templates', url_prefix='/runestone')
 
 @book_server.route('/')
 def hello_world():
     return 'Hello World!'
 
-@book_server.route('/runestone/<path:course>/_static/<path:filename>')
-@book_server.route('/runestone/<path:course>/_images/<path:filename>')
+@book_server.route('/<path:course>/_static/<path:filename>')
+@book_server.route('/<path:course>/_images/<path:filename>')
 def custom_static(course, filename):
     '''
     We have to efficiently serve all of the assets, this seems a common way to do so.
@@ -25,7 +25,7 @@ def custom_static(course, filename):
     app.logger.debug(request.url)
     return send_from_directory(path, filename)
 
-@book_server.route('/runestone/<string:course>/<path:pageinfo>')
+@book_server.route('/<string:course>/<path:pageinfo>')
 def serve_page(course, pageinfo):
     '''
     Lookup information and fill in template information in eBookConfig.  Specifically:
@@ -44,7 +44,7 @@ def serve_page(course, pageinfo):
     app.logger.debug(pageinfo)
     
     base_course = the_course.base_course
-    course_version = get_version(course)
+    course_version = '3'
     python3 = 'true' if the_course.python3 == 'T' else 'false'
     login_required = 'true' if the_course.login_required == 'T' else 'false'
 
