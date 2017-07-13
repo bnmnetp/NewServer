@@ -1,9 +1,8 @@
 from flask import Blueprint, render_template, send_from_directory, request, redirect
 import os, os.path
 
-from runestone import app
-from ..model import Course
 
+from ..model import Course
 
 book_server = Blueprint('book_server',__name__, template_folder='templates', url_prefix='/runestone')
 
@@ -22,7 +21,7 @@ def custom_static(course, filename):
     :return:
     '''
     path = os.path.join(os.getcwd(),'runestone', 'book_server', 'templates', 'thinkcspy','_static')
-    app.logger.debug(request.url)
+    #book_server.logger.debug(request.url)
     return send_from_directory(path, filename)
 
 @book_server.route('/<string:course>/<path:pageinfo>')
@@ -41,7 +40,7 @@ def serve_page(course, pageinfo):
     if not the_course:
         return redirect(f'http://runestone/errors/nocourse/{course}')
 
-    app.logger.debug(pageinfo)
+    #book_server.logger.debug(pageinfo)
     
     base_course = the_course.base_course
     course_version = '3'

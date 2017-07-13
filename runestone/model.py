@@ -21,4 +21,3 @@ class LogInfo(db.Model):
     div_id = db.Column(db.String)
     course_id = db.Column(db.String)
 
-db.create_all()
