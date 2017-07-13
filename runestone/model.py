@@ -13,7 +13,8 @@ class Course(db.Model):
 # Regex to convert web2py to SQLAlchemy - Field\('(\w+)',\s*'(\w+)'\), --> $1 = db.Column(db.$2)
 class LogInfo(db.Model):
     __tablename__ = 'useinfo'
-    timestamp = db.Column(db.Datetime)
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime)
     sid = db.Column(db.String)
     event = db.Column(db.String)
     act = db.Column(db.String)
