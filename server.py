@@ -32,7 +32,7 @@ def custom_static(course, filename):
     :param filename:
     :return:
     '''
-    path = 'templates/thinkcspy/_static'
+    path = os.path.join('templates', 'thinkcspy', '_static')
     return send_from_directory(path, filename)
 
 @app.route('/runestone/<string:course>/<path:pageinfo>')
