@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, send_from_directory, request, redirect
-import os.path
+import os, os.path
 
 from runestone import app
 from ..model import Course
@@ -9,7 +9,7 @@ book_server = Blueprint('book_server',__name__, template_folder='templates', url
 
 @book_server.route('/')
 def hello_world():
-    return 'Hello World!'
+    return 'Hello World! {}'.format(os.getcwd())
 
 @book_server.route('/<path:course>/_static/<path:filename>')
 @book_server.route('/<path:course>/_images/<path:filename>')
@@ -21,7 +21,7 @@ def custom_static(course, filename):
     :param filename:
     :return:
     '''
-    path = '/Users/bmiller/Runestone/server/runestone/book_server/templates/thinkcspy/_static'
+    path = os.path.join(os.getcwd(),'runestone', 'book_server', 'templates', 'thinkcspy','_static')
     app.logger.debug(request.url)
     return send_from_directory(path, filename)
 
