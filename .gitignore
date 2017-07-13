@@ -1,2 +1,5 @@
 templates/thinkcspy
 *.pyc
+*.log
+*.orig
+/runestone/book_server/templates/*
