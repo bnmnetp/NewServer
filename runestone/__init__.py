@@ -3,10 +3,10 @@ from flask_sqlalchemy import SQLAlchemy
 
 
 app = Flask(__name__)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://millbr02:@localhost/runestone'
 db = SQLAlchemy(app)
 
-
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://bmiller:@localhost/runestone'
 
 from runestone.book_server.server import book_server
 
