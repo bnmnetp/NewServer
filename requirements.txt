@@ -1,0 +1,5 @@
+Flask
+Flask-Bootstrap
+Flask-SQLAlchemy
+Flask-Script
+psycopg2
