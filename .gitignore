@@ -3,3 +3,4 @@ templates/thinkcspy
 *.log
 *.orig
 /runestone/book_server/templates/*
+.vscode

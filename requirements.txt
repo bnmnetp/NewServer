@@ -2,4 +2,5 @@ Flask
 Flask-Bootstrap
 Flask-SQLAlchemy
 Flask-Script
+Flask-Migrate
 psycopg2
