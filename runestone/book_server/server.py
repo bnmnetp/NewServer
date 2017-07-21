@@ -1,5 +1,6 @@
-from flask import Blueprint, render_template, send_from_directory, request, redirect
 import os, os.path
+from flask import Blueprint, render_template, send_from_directory, request, redirect
+from flask_security import login_required
 
 
 from ..model import Course
@@ -7,6 +8,7 @@ from ..model import Course
 book_server = Blueprint('book_server',__name__, template_folder='templates', url_prefix='/runestone')
 
 @book_server.route('/')
+@login_required
 def hello_world():
     return 'Hello World! {}'.format(os.getcwd())
 
@@ -24,6 +26,7 @@ def custom_static(course, filename):
     #book_server.logger.debug(request.url)
     return send_from_directory(path, filename)
 
+@login_required
 @book_server.route('/<string:course>/<path:pageinfo>')
 def serve_page(course, pageinfo):
     '''
