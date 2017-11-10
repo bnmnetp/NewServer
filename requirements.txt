@@ -5,3 +5,4 @@ Flask-Script
 Flask-Migrate
 Flask-Security
 psycopg2
+bcrypt

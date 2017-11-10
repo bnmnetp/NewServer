@@ -19,7 +19,7 @@ class DevelopmentConfig(Config):
     SECURITY_CONFIRMABLE = False
     SECURITY_SEND_REGISTER_EMAIL = False
     SECURITY_POST_LOGIN_VIEW = '/runestone/'
-    SECURITY_POST_LOGOUT_VIEW = '/runestone/'    
+    SECURITY_POST_LOGOUT_VIEW = '/runestone/'
 
 class ProductionConfig(Config):
     DEBUG = False
@@ -32,8 +32,22 @@ class ProductionConfig(Config):
     MAIL_PASSWORD = None
 
 class TestingConfig(Config):
+    DEBUG = True
+    SECURITY_CONFIRMABLE = False
+    SECURITY_SEND_REGISTER_EMAIL = False
+    SECURITY_POST_LOGIN_VIEW = '/runestone/'
+    SECURITY_POST_LOGOUT_VIEW = '/runestone/'
+
+    # In-memory sqlite DB
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    # Propagate exceptions (don't show 500 error page).
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DBURL')
+    # Disable CSRF token in Flask-Wtf.
+    WTF_CSRF_ENABLED = False
+    # Enable @register_required while app.testing=True.
+    LOGIN_DISABLED = False
+    # Suppress the sending of emails.
+    MAIL_SUPPRESS_SEND = True
 
 config = {
     'development': DevelopmentConfig,
