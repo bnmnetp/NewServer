@@ -1,3 +1,6 @@
+# ***************************
+# |docname| - The core server
+# ***************************
 import os, os.path
 from flask import Blueprint, render_template, send_from_directory, request, redirect
 from flask_security import login_required

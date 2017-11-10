@@ -1,3 +1,5 @@
+:orphan:
+
 A New and Improved Runestone Server
 ===================================
 
@@ -10,24 +12,22 @@ Overview
 --------
 This app makes use of `Flask Blueprints <http://flask.pocoo.org/docs/0.12/blueprints/>`_.  Its a nice way to modularize your application, but it makes understanding the app a little more difficult at first.
 
-Structure:
+Installation
+------------
+#.  ``pip install -U -r requirements.txt``
+#.  Download web2py. Copy the ``gluons`` directory to the package root, so it can be imported.
 
--   wsgi.py  -- simple driver file for kicking off the app
--   runestone/ -- The root of a python package (eventually distributed to pypi)
-
-    -   __init__.py
-    -   model.py
-    -   book_server/
-
-        -   __init__.py
-        -   server.py
-    -   api
-
-        -   __init__.py
-        -   endpoints.py
+Running
+-------
+#.  Set the ``DEV_DBURL`` to a valid DB URL. (See `config.py`).
+#.  Run ``python wsgi.py``
+#.  Browse to http://127.0.0.1:8080/runestone.
 
 Testing
 -------
-#.  Set the ``DEV_DBURL`` to a valid DB URL. (See ``runestone/config.py``).
-#.  Run ``python wsgi.py``
-#.  Browse to http://127.0.0.1:8080/runestone.
+Run ``pytest test_book_server.py`` from the root project directory.
+
+Building docs
+-------------
+Execute ``sphinx-build -d _build\doctrees . _build\html`` in the root project directory.
+

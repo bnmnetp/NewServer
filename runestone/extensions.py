@@ -1,3 +1,6 @@
+# ************************************
+# |docname| - Initialize Flask plugins
+# ************************************
 from flask_sqlalchemy import SQLAlchemy
 from flask_bootstrap import Bootstrap
 from flask_security import Security, SQLAlchemySessionUserDatastore

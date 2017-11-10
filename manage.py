@@ -1,5 +1,8 @@
 #!/usr/bin/env python
-
+#
+# ***************
+# |docname| - ???
+# ***************
 import os
 from runestone import create_app, db
 from runestone.model import Course, LogInfo

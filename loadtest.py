@@ -1,3 +1,7 @@
+# ****************************************
+# |docname| - Test this server under load?
+# ****************************************
+
 from locust import HttpLocust, TaskSet, task
 from lxml import html
 import requests as rq
@@ -23,18 +27,18 @@ class SimpleTests(TaskSet):
     @task
     def index(self):
         self.client.get("/", verify=False)
-    
+
     @task
     def home(self):
         self.client.get("/runestone/course/index.html", verify=False)
         self.getAllAssets()
 
 
-    # @task
-    # def logrun(self):
-    #     self.client.post("/runestone/ajax/hsblog",
-    #         {'event': 'activecode', 'act': 'edit', 'div_id': 'logtest'},
-    #         verify=False)
+    ## @task
+    ## def logrun(self):
+    ##     self.client.post("/runestone/ajax/hsblog",
+    ##         {'event': 'activecode', 'act': 'edit', 'div_id': 'logtest'},
+    ##         verify=False)
 
     @task
     def add(self):

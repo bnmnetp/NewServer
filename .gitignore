@@ -1,6 +1,17 @@
+# **************************
+# |docname| - Ignore for Git
+# **************************
 templates/thinkcspy
 *.pyc
 *.log
 *.orig
 /runestone/book_server/templates/*
 .vscode
+
+# Sphinx/CodeChat output
+_build/
+sphinx-enki-info.txt
+
+# Pytest
+lastfailed
+tmp.html

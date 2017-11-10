@@ -1,4 +1,6 @@
-# Run a test server.
+# *****************************
+# |docname| - run a test server
+# *****************************
 import os
 from runestone import create_app, db, user_datastore
 

@@ -1,3 +1,13 @@
+# ******************************************
+# runestone/|docname| - The Runestone module
+# ******************************************
+# .. toctree::
+#   :glob:
+#
+#   api/__init__.py
+#   book_server/__init__.py
+#   *.py
+
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from config import config
@@ -19,7 +29,7 @@ def create_app(config_name):
     mail.init_app(app)
 
 
-    security.init_app(app, user_datastore)    
+    security.init_app(app, user_datastore)
 
     from runestone.book_server.server import book_server
     app.register_blueprint(book_server)

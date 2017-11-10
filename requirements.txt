@@ -1,3 +1,6 @@
+# *****************************************
+# |docname| - Dependencies for this package
+# *****************************************
 Flask
 Flask-Bootstrap
 Flask-SQLAlchemy
@@ -6,3 +9,6 @@ Flask-Migrate
 Flask-Security
 psycopg2
 bcrypt
+CodeChat
+Sphinx
+sphinx_rtd_theme

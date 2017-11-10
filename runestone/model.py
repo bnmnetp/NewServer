@@ -1,6 +1,6 @@
-"""
-    Define the tables necessary for serving textbooks, api and logins
-"""
+# *****************************************************************************
+# |docname| - define the tables necessary for serving textbooks, api and logins
+# *****************************************************************************
 from runestone import db
 from sqlalchemy import Boolean, DateTime, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, backref

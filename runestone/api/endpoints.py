@@ -1,3 +1,6 @@
+# **********************************
+# |docname| - provide Ajax endpoints
+# **********************************
 from flask import Blueprint, request, make_response
 from ..model import LogInfo
 import uuid
@@ -13,19 +16,19 @@ def log_book_event():
     setCookie = False
     sid = request.cookies.get('ipuser')  # quickest way to get the sid
 
-    # if auth.user:    # todo: How can we make web2py and flask share login information? - we can get the session cookie but we need to unscramblepython
-    #     sid = auth.user.username
-    #     compareAndUpdateCookieData(sid)
-    #     setCookie = True    # we set our own cookie anyway to eliminate many of the extraneous anonymous
-    #                         # log entries that come from auth timing out even but the user hasn't reloaded
-    #                         # the page.
-    # else:
-    #     if request.cookies.has_key('ipuser'):
-    #         sid = request.cookies['ipuser'].value
-    #         setCookie = True
-    #     else:
-    #         sid = str(uuid.uuid1().int)+"@"+request.client
-    #         setCookie = True
+    ## if auth.user:    # todo: How can we make web2py and flask share login information? - we can get the session cookie but we need to unscramblepython
+    ##     sid = auth.user.username
+    ##     compareAndUpdateCookieData(sid)
+    ##     setCookie = True    # we set our own cookie anyway to eliminate many of the extraneous anonymous
+    ##                         # log entries that come from auth timing out even but the user hasn't reloaded
+    ##                         # the page.
+    ## else:
+    ##     if request.cookies.has_key('ipuser'):
+    ##         sid = request.cookies['ipuser'].value
+    ##         setCookie = True
+    ##     else:
+    ##         sid = str(uuid.uuid1().int)+"@"+request.client
+    ##         setCookie = True
     act = request.args.act
     div_id = request.args.div_id
     event = request.args.event
