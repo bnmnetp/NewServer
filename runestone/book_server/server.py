@@ -5,6 +5,12 @@ from flask_security import login_required
 
 from ..model import Course
 
+# Why a blueprint? I think what's needed is:
+#
+# - Which course was required.
+# - The base course from which this course was created.
+#
+# Then, simply fill in the eBookConfig and that's it. The base course can be found by querying the db based on the given course. Cache this if performance is a problem.
 book_server = Blueprint('book_server',__name__, template_folder='templates', url_prefix='/runestone')
 
 @book_server.route('/')
@@ -17,7 +23,13 @@ def hello_world():
 def custom_static(course, filename):
     '''
     We have to efficiently serve all of the assets, this seems a common way to do so.
-    There is some mention of X-sendfile header along with send_file and this should be investigated
+    There is some mention of `X-sendfile header <http://flask.pocoo.org/docs/0.12/api/#flask.send_from_directory>`_ along with send_file and this should be investigated. See also the `howto <http://pythonhosted.org/xsendfile/howto.html>`_.
+
+    Other possibly helpful links:
+
+    -   https://www.digitalocean.com/community/tutorials/how-to-deploy-python-wsgi-apps-using-gunicorn-http-server-behind-nginx
+    -   http://talhaoz.com/2014/07/serving-files-with-flask-behind-nginx-gunicorn/
+
     :param course:
     :param filename:
     :return:
@@ -44,7 +56,7 @@ def serve_page(course, pageinfo):
         return redirect(f'http://runestone/errors/nocourse/{course}')
 
     #book_server.logger.debug(pageinfo)
-    
+
     base_course = the_course.base_course
     course_version = '3'
     python3 = 'true' if the_course.python3 == 'T' else 'false'
