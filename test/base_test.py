@@ -1,9 +1,7 @@
-# ********************************
-# test_book_server.py - Unit tests
-# ********************************
-# Invocation:
-#
-# - To run all tests: ``pytest``.
+# ********************************************
+# base_test.py - Base class for all unit tests
+# ********************************************
+# This provides the fixtures and a base class to simplify unit tests.
 #
 # Imports
 # =======
@@ -28,43 +26,6 @@ from runestone.model import AuthUser
 # Create a testing application.
 app = create_app('testing')
 
-# Data
-# ----
-# Creates some fake data which the tests use.
-# Create test data.
-def create_test_data():
-    make_user('brad@test.user', 'grouplens')
-    db.session.commit()
-
-# Fixtures
-# --------
-# Set up the database for the test session. Do this just once for all tests, rather than every test (module scope).
-@pytest.fixture(scope='module')
-def test_db():
-    # _`test_client`: the `test client <http://flask.pocoo.org/docs/0.11/api/#flask.Flask.test_client>`_ to request pages from.
-    test_client = app.test_client()
-    with app.app_context():
-        db.create_all()
-
-    return test_client
-
-# Define `per-function setup and teardown <http://doc.pytest.org/en/latest/fixture.html#fixture-finalization-executing-teardown-code>`_ which places test data in an already existing database, then removes all data from the database when the test finishes.
-@pytest.fixture()
-def test_client(test_db, request):
-    # Setup
-    with app.app_context():
-        create_test_data()
-
-    def teardown():
-        with app.app_context():
-            # Teardown. Adapted from http://stackoverflow.com/a/5003705. A simple db.drop_all() works, but doubles test time. This should remove all data, but keep the schema.
-            for table in reversed(db.metadata.sorted_tables):
-                db.session.execute(table.delete())
-            db.session.commit()
-    request.addfinalizer(teardown)
-
-    return test_db
-
 # Utilities
 # ---------
 # Define a `context manger <https://docs.python.org/3/reference/datamodel.html#context-managers>`_ which sandwiches its body with a ``login``/``logout``.
@@ -79,20 +40,6 @@ class LoginContext:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.test_class.logout()
-
-# Create a user if they don't exist, or return the existing user.
-def make_user(username, password):
-    u = db.session.AuthUser[username].q
-    if not u.count():
-        user = AuthUser(
-            username=username,
-            password=app.user_manager.hash_password(password),
-        )
-        db.session.add(user)
-        db.session.commit()
-    else:
-        user = u.one()
-    return user
 
 # Apply these fixes to every test `automatically <https://docs.pytest.org/en/latest/fixture.html#using-fixtures-from-classes-modules-or-projects>`_.
 @pytest.mark.usefixtures("test_client_")
@@ -178,23 +125,3 @@ class BaseTest:
     def logout(self):
         return self.get_valid(app.config['USER_LOGOUT_URL'],
             b'You have signed out successfully.', follow_redirects=True)
-
-# Tests
-# -----
-class TestRunestoneServer(BaseTest):
-    # Check the root path view.
-    def test_1(self):
-        with LoginContext(self, 'brad@test.user', 'grouplens'):
-            self.get_valid('/runestone', follow_redirects=True)
-
-    # Make sure the 404 page works.
-    def test_2(self):
-        self.get_invalid('xxx.html')
-
-    # An example of checking the JSON returned from a URL.
-    questions_url = '/book/unsigned_8-_and_16-bit_ops/introduction.s.html/questions'
-    def example_test_9(self):
-        with LoginContext(self, 'student'):
-            self.get_valid_json(self.questions_url,
-                           {'define_label': ['foo:', 2, 2, 'correct'],
-                            'comment': ['10000', 0, 1, 'Incorrect.']})

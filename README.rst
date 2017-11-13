@@ -25,7 +25,7 @@ Running
 
 Testing
 -------
-Run ``pytest test_book_server.py`` from the root project directory.
+Run ``python -m pytest test`` from the root project directory.
 
 Building docs
 -------------
