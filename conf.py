@@ -169,6 +169,8 @@ exclude_patterns = [
     'tmp.html',
     # Web2py
     'gluon',
+    # Books
+    'runestone/book_server/templates'
 ]
 
 # `default_role <http://sphinx-doc.org/config.html#confval-default_role>`_: The

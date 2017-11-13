@@ -17,6 +17,12 @@ class Course(db.Model):
     python3 = db.Column(db.Boolean)
     login_required = db.Column(db.Boolean)
 
+    # Define a default query: the username if provided a string. Otherwise, automatically fall back to the id.
+    @classmethod
+    def default_query(cls, key):
+        if isinstance(key, str):
+            return cls.course_name == key
+
 # Regex to convert web2py to SQLAlchemy - Field\('(\w+)',\s*'(\w+)'\), --> $1 = db.Column(db.$2)
 class LogInfo(db.Model):
     __tablename__ = 'useinfo'

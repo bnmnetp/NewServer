@@ -16,6 +16,7 @@ Installation
 ------------
 #.  ``pip install -U -r requirements.txt``
 #.  Download web2py. Copy the ``gluons`` directory to the package root, so it can be imported.
+#.  Edit `config.py` to set the web2py credentials for your database.
 
 Running
 -------

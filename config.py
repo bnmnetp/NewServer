@@ -5,9 +5,13 @@ import os
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 class Config:
+    # Set the `secret_key <http://flask.pocoo.org/docs/0.12/api/#flask.Flask.secret_key>`_ to enable `sessions <http://flask.pocoo.org/docs/0.12/api/#sessions>`_ in Flask.
+    SECRET_KEY = 'top-secret'
+
+    # Flask-SQLAlchemy
+    #
     SQLALCHEMY_COMMIT_ON_TEARDOWN = True
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SECRET_KEY = 'top-secret'
 
     # Web2py credentials
     #
@@ -16,7 +20,7 @@ class Config:
     # web2py stores password in the format ``<algorithm>$<salt>$<hash>``. This is the salt value. To obtain this on Windows, ``psql %DBURL%`` then ``select * from auth_user;``. Provide it as a string.
     WEB2PY_SALT = 'b9d8e92d9e5d8882'
 
-    # Flask-User configuration
+    # Flask-User
     #
     # Disable e-mail confirmation, since web2py doesn't do this. Also, this means we don't need a ``confirmed_at`` column, which would mean a database migration to add it.
     USER_ENABLE_CONFIRM_EMAIL = False
