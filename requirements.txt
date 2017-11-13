@@ -6,7 +6,7 @@ Flask-Bootstrap
 Flask-SQLAlchemy
 Flask-Script
 Flask-Migrate
-Flask-Security
+Flask-User
 psycopg2
 bcrypt
 CodeChat

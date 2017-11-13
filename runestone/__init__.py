@@ -9,16 +9,9 @@
 #   *.py
 
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 from config import config
-from flask_bootstrap import Bootstrap
-from flask_security import Security, SQLAlchemySessionUserDatastore
-from .extensions import db, bootstrap, security, mail
-from .model import User, Role
-
-
-user_datastore = SQLAlchemySessionUserDatastore(db.session,
-                                                User, Role)
+from .extensions import db, bootstrap, mail
+from .model import user_manager
 
 def create_app(config_name):
     app = Flask(__name__)
@@ -27,9 +20,7 @@ def create_app(config_name):
     bootstrap.init_app(app)
     db.init_app(app)
     mail.init_app(app)
-
-
-    security.init_app(app, user_datastore)
+    user_manager.init_app(app)
 
     from runestone.book_server.server import book_server
     app.register_blueprint(book_server)

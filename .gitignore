@@ -15,3 +15,6 @@ sphinx-enki-info.txt
 # Pytest
 lastfailed
 tmp.html
+
+# Web2py
+gluon/

@@ -8,9 +8,21 @@ class Config:
     SQLALCHEMY_COMMIT_ON_TEARDOWN = True
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SECRET_KEY = 'top-secret'
-    SECURITY_REGISTERABLE = True
-    SECURITY_PASSWORD_SALT = '7a183de0-7cdc-4132-966b-69bfac9f47a3'
-    SECURITY_TRACKABLE = True
+
+    # Web2py credentials
+    #
+    # The file ``web2py/applications/runestone/private/auth.key`` contains Web2py's private encryption key. Provide it as a string here.
+    WEB2PY_PRIVATE_KEY = 'sha512:2c560062-762c-4399-a304-85658e363801'
+    # web2py stores password in the format ``<algorithm>$<salt>$<hash>``. This is the salt value. To obtain this on Windows, ``psql %DBURL%`` then ``select * from auth_user;``. Provide it as a string.
+    WEB2PY_SALT = 'b9d8e92d9e5d8882'
+
+    # Flask-User configuration
+    #
+    # Disable e-mail confirmation, since web2py doesn't do this. Also, this means we don't need a ``confirmed_at`` column, which would mean a database migration to add it.
+    USER_ENABLE_CONFIRM_EMAIL = False
+    # Used by email templates
+    USER_APP_NAME = 'Runestone Interactive'
+    USER_AFTER_LOGIN_ENDPOINT = 'book_server.hello_world'
 
     @staticmethod
     def init_app(app):
@@ -21,8 +33,6 @@ class DevelopmentConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DBURL')
     SECURITY_CONFIRMABLE = False
     SECURITY_SEND_REGISTER_EMAIL = False
-    SECURITY_POST_LOGIN_VIEW = '/runestone/'
-    SECURITY_POST_LOGOUT_VIEW = '/runestone/'
 
 class ProductionConfig(Config):
     DEBUG = False
@@ -38,8 +48,6 @@ class TestingConfig(Config):
     DEBUG = True
     SECURITY_CONFIRMABLE = False
     SECURITY_SEND_REGISTER_EMAIL = False
-    SECURITY_POST_LOGIN_VIEW = '/runestone/'
-    SECURITY_POST_LOGOUT_VIEW = '/runestone/'
 
     # In-memory sqlite DB
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'

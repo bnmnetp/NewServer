@@ -2,11 +2,12 @@
 # |docname| - The core server
 # ***************************
 import os, os.path
-from flask import Blueprint, render_template, send_from_directory, request, redirect
-from flask_security import login_required
-
+import flask
+from flask import Blueprint, render_template, send_from_directory, request, redirect, url_for
+from flask_user import login_required
 
 from ..model import Course
+from ..extensions import db
 
 # Why a blueprint? I think what's needed is:
 #
@@ -19,7 +20,7 @@ book_server = Blueprint('book_server',__name__, template_folder='templates', url
 @book_server.route('/')
 @login_required
 def hello_world():
-    return 'Hello World! {}'.format(os.getcwd())
+    return 'Hello World! {}<br><a href="/user/sign-out">Log out</a>'.format(os.getcwd())
 
 @book_server.route('/<path:course>/_static/<path:filename>')
 @book_server.route('/<path:course>/_images/<path:filename>')
@@ -67,4 +68,3 @@ def serve_page(course, pageinfo):
 
     template = os.path.join(base_course, pageinfo)
     return render_template(template, basecourse=base_course, python3=python3, login_required=login_required)
-

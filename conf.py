@@ -167,6 +167,8 @@ exclude_patterns = [
     '__pycache__',
     '.cache',
     'tmp.html',
+    # Web2py
+    'gluon',
 ]
 
 # `default_role <http://sphinx-doc.org/config.html#confval-default_role>`_: The

@@ -1,10 +1,12 @@
 # *****************************************************************************
 # |docname| - define the tables necessary for serving textbooks, api and logins
 # *****************************************************************************
-from runestone import db
 from sqlalchemy import Boolean, DateTime, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, backref
-from flask_security import UserMixin, RoleMixin
+from flask_user import UserMixin, UserManager, SQLAlchemyAdapter
+from gluon.validators import CRYPT
+
+from runestone import db
 
 class Course(db.Model):
     __tablename__ = 'courses'
@@ -26,30 +28,44 @@ class LogInfo(db.Model):
     div_id = db.Column(db.String)
     course_id = db.Column(db.String)
 
-class RolesUsers(db.Model):
-    __tablename__ = 'roles_users'
-    id = Column(db.Integer(), primary_key=True)
-    user_id = Column('user_id', Integer(), ForeignKey('user_store.id'))
-    role_id = Column('role_id', Integer(), ForeignKey('role.id'))
-
-class Role(db.Model, RoleMixin):
-    __tablename__ = 'role'
-    id = Column(Integer(), primary_key=True)
-    name = Column(String(80), unique=True)
-    description = Column(String(255))
-
-class User(db.Model, UserMixin):
-    __tablename__ = 'user_store'
+class AuthUser(db.Model, UserMixin):
+    __tablename__ = 'auth_user'
     id = Column(Integer, primary_key=True)
-    email = Column(String(255), unique=True)
-    username = Column(String(255))
-    password = Column(String(255))
-    last_login_at = Column(DateTime())
-    current_login_at = Column(DateTime())
-    last_login_ip = Column(String(100))
-    current_login_ip = Column(String(100))
-    login_count = Column(Integer)
+    username = Column(String(512), nullable=False, unique=True)
+    first_name = Column(String(512))
+    last_name = Column(String(512))
+    email = Column(String(512), unique=True)
+    password = Column(String(512))
+    created_on = Column(DateTime())
+    modified_on = Column(DateTime())
+    registration_key = Column(String(512))
+    reset_password_key = Column(String(512))
+    registration_id = Column(String(512))
+    cohort_id = Column(String(512))
+    course_id = Column(String(512))
     active = Column(Boolean())
-    confirmed_at = Column(DateTime())
-    roles = relationship('Role', secondary='roles_users',
-                         backref=backref('role', lazy='dynamic')) # was users but seems wrong.
+
+    # Define a default query: the username if provided a string. Otherwise, automatically fall back to the id.
+    @classmethod
+    def default_query(cls, key):
+        if isinstance(key, str):
+            return cls.username == key
+
+# Flask-User customization
+# ========================
+# Use's web2py's encryption. See http://flask-user.readthedocs.io/en/v0.6/customization.html#password-hashing.
+class UserManagerWeb2Py(UserManager):
+    def init_app(self, app):
+        super().init_app(app)
+
+        # Create the web2py encrypter.
+        self.crypt = CRYPT(key=app.config['WEB2PY_PRIVATE_KEY'], salt=app.config['WEB2PY_SALT'])
+
+    def hash_password(self, password):
+        return str(self.crypt(password)[0])
+
+    def verify_password(self, password, user):
+        return self.hash_password(password) == self.get_password(user)
+
+db_adapter = SQLAlchemyAdapter(db, AuthUser)
+user_manager = UserManagerWeb2Py(db_adapter)
