@@ -1,6 +1,6 @@
-# ********************************************
-# base_test.py - Base class for all unit tests
-# ********************************************
+# *****************************************
+# |docname| - Base class for all unit tests
+# *****************************************
 # This provides the fixtures and a base class to simplify unit tests.
 #
 # Imports
