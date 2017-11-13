@@ -15,6 +15,14 @@ book_server = Blueprint('book_server', __name__, template_folder='templates', ur
 def hello_world():
     return 'Hello World! {}<br><a href="/user/sign-out">Log out</a>'.format(os.getcwd())
 
+def js_bool(b):
+    if b:
+        return 'true'
+    elif not b:
+        return 'false'
+    else:
+        assert False
+
 @login_required
 @book_server.route('/<string:course>/<path:pageinfo>')
 def serve_page(course, pageinfo):
@@ -50,7 +58,7 @@ def serve_page(course, pageinfo):
         return send_from_directory(templates_path, filesystem_path)
     else:
         course_version = '3'
-        python3 = 'true' if the_course.python3 == 'T' else 'false'
-        login_required = 'true' if the_course.login_required == 'T' else 'false'
+        python3 = js_bool(the_course.python3)
+        login_required = js_bool(the_course.login_required)
 
         return render_template(filesystem_path, basecourse=base_course, python3=python3, login_required=login_required)

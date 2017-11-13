@@ -1,12 +1,36 @@
 # *****************************************************************************
 # |docname| - define the tables necessary for serving textbooks, api and logins
 # *****************************************************************************
-from sqlalchemy import Boolean, DateTime, Column, Integer, String, ForeignKey
+from sqlalchemy import DateTime, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, backref
 from flask_user import UserMixin, UserManager, SQLAlchemyAdapter
 from gluon.validators import CRYPT
+import sqlalchemy.types as types
 
 from runestone import db
+
+# Define a web2py-compatible Boolean type. See `custom types <http://docs.sqlalchemy.org/en/latest/core/custom_types.html>`_.
+class Web2PyBoolean(types.TypeDecorator):
+    impl = types.CHAR(1)
+
+    def process_bind_param(self, value, dialect):
+        if value:
+            return 'T'
+        elif not value:
+            return 'F'
+        else:
+            assert False
+
+    def process_result_value(self, value, dialect):
+        if value == 'T':
+            return True
+        elif value == 'F':
+            return False
+        else:
+            assert False
+
+    def copy(self, **kw):
+        return Web2PyBoolean(self.impl.length)
 
 class Course(db.Model):
     __tablename__ = 'courses'
@@ -14,8 +38,8 @@ class Course(db.Model):
     course_name = db.Column(db.String, unique=True)
     term_start_date = db.Column(db.Date)
     base_course = db.Column(db.String)
-    python3 = db.Column(db.Boolean)
-    login_required = db.Column(db.Boolean)
+    python3 = db.Column(Web2PyBoolean)
+    login_required = db.Column(Web2PyBoolean)
 
     # Define a default query: the username if provided a string. Otherwise, automatically fall back to the id.
     @classmethod
@@ -49,7 +73,7 @@ class AuthUser(db.Model, UserMixin):
     registration_id = Column(String(512))
     cohort_id = Column(String(512))
     course_id = Column(String(512))
-    active = Column(Boolean())
+    active = Column(Web2PyBoolean)
 
     # Define a default query: the username if provided a string. Otherwise, automatically fall back to the id.
     @classmethod
