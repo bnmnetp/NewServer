@@ -6,7 +6,7 @@ from pathlib import Path
 from flask import Blueprint, render_template, send_from_directory, safe_join, request, redirect, url_for
 from flask_user import login_required
 
-from ..model import Course
+from ..model import Courses
 
 book_server = Blueprint('book_server', __name__, template_folder='templates', url_prefix='/runestone')
 
@@ -23,8 +23,8 @@ def js_bool(b):
     else:
         assert False
 
-@login_required
 @book_server.route('/<string:course>/<path:pageinfo>')
+@login_required
 def serve_page(course, pageinfo):
     '''
     Lookup information and fill in template information in eBookConfig.  Specifically:
@@ -37,7 +37,7 @@ def serve_page(course, pageinfo):
     :return: filled page template
     '''
     # Use the handy `query <http://flask-sqlalchemy.pocoo.org/2.3/queries/#querying-records>`_ attribute.
-    the_course = Course[course].q.first()
+    the_course = Courses[course].q.first()
     if not the_course:
         return redirect(f'http://runestone/errors/nocourse/{course}')
     base_course = the_course.base_course

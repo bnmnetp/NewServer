@@ -15,11 +15,11 @@ import json
 # Third-party imports
 # -------------------
 import pytest
+from flask import url_for
 
 # Local imports
 # -------------
-from runestone import create_app, db
-from runestone.model import AuthUser
+from runestone import create_app
 
 # Tests
 # =====
@@ -49,6 +49,7 @@ class BaseTest:
     @pytest.fixture()
     def test_client_(self, test_client):
         self.test_client = test_client
+        self.login_context = LoginContext(self, 'brad@test.user', 'grouplens')
 
     # _`get_check`: Get a web page, checking its returned status code and optionally its contents.
     def get_check(self,
@@ -73,6 +74,20 @@ class BaseTest:
                 f.write(rv.data)
             raise
         return rv
+
+    def post_check(self, url, expected_status, expected_response_phrase=b'', **kwargs):
+        rv = self.test_client.post(url, **kwargs)
+        try:
+            # Check the `status code`_ and the `data <http://flask.pocoo.org/docs/0.11/api/#flask.Response.data>`_.
+            assert rv.status_code == expected_status
+            assert expected_response_phrase in rv.data
+        except AssertionError:
+            # On a test failure, save the resulting web page for debug purposes.
+            with open('tmp.html', 'wb') as f:
+                f.write(rv.data)
+            raise
+        return rv
+
 
     # _`get_valid`: Get a web page, verifying the `status code`_ was 200 (OK). This function returns the value produced by get_check_.
     def get_valid(self,
@@ -109,19 +124,20 @@ class BaseTest:
             **kwargs)
 
     # Verify that a login with the given username succeeds.
-    def login(self, email, password):
-        rv = self.test_client.post(app.config['USER_LOGIN_URL'], data=dict(
-                email=email,
+    def login(self, username, password):
+        rv = self.post_check(url_for('user.login'), 200, data=dict(
+                username=username,
                 password=password,
-                remember='y',
+                next=url_for(app.config['USER_AFTER_LOGIN_ENDPOINT']),
             ),
             follow_redirects=True)
-        # TODO: Expect the text of a flashed message after a login.
         ##assert b'You have signed in successfully.' in rv.data
-        assert rv.status_code == 200
         return rv
 
     # Verify that a logout succeeds.
     def logout(self):
         return self.get_valid(app.config['USER_LOGOUT_URL'],
             b'You have signed out successfully.', follow_redirects=True)
+
+    def must_login(self, url):
+        return self.get_valid(url, b'You must be signed in to access', follow_redirects=True)

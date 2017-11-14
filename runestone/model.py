@@ -32,14 +32,17 @@ class Web2PyBoolean(types.TypeDecorator):
     def copy(self, **kw):
         return Web2PyBoolean(self.impl.length)
 
-class Course(db.Model):
+class Courses(db.Model):
     __tablename__ = 'courses'
     id = db.Column(db.Integer, primary_key=True)
     course_name = db.Column(db.String, unique=True)
     term_start_date = db.Column(db.Date)
-    base_course = db.Column(db.String)
+    base_course = db.Column(db.String, db.ForeignKey('courses.course_name'))
     python3 = db.Column(Web2PyBoolean)
     login_required = db.Column(Web2PyBoolean)
+
+    # Create ``child_courses`` which all refer to a single ``parent_course``: children's ``base_course`` matches a parent's ``course_name``. See `adjacency list relationships <http://docs.sqlalchemy.org/en/latest/orm/self_referential.html#self-referential>`_.
+    child_courses = db.relationship('Courses', backref=backref('parent_course', remote_side=[course_name]))
 
     # Define a default query: the username if provided a string. Otherwise, automatically fall back to the id.
     @classmethod
@@ -48,7 +51,7 @@ class Course(db.Model):
             return cls.course_name == key
 
 # Regex to convert web2py to SQLAlchemy - Field\('(\w+)',\s*'(\w+)'\), --> $1 = db.Column(db.$2)
-class LogInfo(db.Model):
+class UseInfo(db.Model):
     __tablename__ = 'useinfo'
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime)
@@ -58,7 +61,7 @@ class LogInfo(db.Model):
     div_id = db.Column(db.String)
     course_id = db.Column(db.String)
 
-class AuthUser(db.Model, UserMixin):
+class Auth_User(db.Model, UserMixin):
     __tablename__ = 'auth_user'
     id = Column(Integer, primary_key=True)
     username = Column(String(512), nullable=False, unique=True)
@@ -97,5 +100,5 @@ class UserManagerWeb2Py(UserManager):
     def verify_password(self, password, user):
         return self.hash_password(password) == self.get_password(user)
 
-db_adapter = SQLAlchemyAdapter(db, AuthUser)
+db_adapter = SQLAlchemyAdapter(db, Auth_User)
 user_manager = UserManagerWeb2Py(db_adapter)

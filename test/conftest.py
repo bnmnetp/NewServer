@@ -19,17 +19,18 @@ import pytest
 # Local imports
 # -------------
 from runestone import db
-from runestone.model import AuthUser
+from runestone.model import Auth_User, Courses
 
 # Data
 # ----
 # Create a user if they don't exist, or return the existing user.
 def make_user(app, username, password):
-    u = db.session.AuthUser[username].q
+    u = Auth_User[username].q
     if not u.count():
-        user = AuthUser(
+        user = Auth_User(
             username=username,
             password=app.user_manager.hash_password(password),
+            active=True,
         )
         db.session.add(user)
         db.session.commit()
@@ -40,6 +41,24 @@ def make_user(app, username, password):
 # Creates some fake data which the tests use.
 def create_test_data(app):
     make_user(app, 'brad@test.user', 'grouplens')
+    test_base_course = Courses(
+        course_name='test_base_course',
+        python3=True,
+        login_required=True,
+    )
+    test_child_course1 = Courses(
+        course_name='test_child_course1',
+        parent_course=test_base_course,
+        python3=True,
+        login_required=True,
+    )
+    test_child_course2 = Courses(
+        course_name='test_child_course2',
+        parent_course=test_base_course,
+        python3=False,
+        login_required=False,
+    )
+    db.session.add(test_base_course)
     db.session.commit()
 
 # Fixtures
@@ -60,15 +79,20 @@ def test_db(request):
 def test_client(test_db, request):
     # Setup
     app = request.module.app
-    with app.app_context():
-        create_test_data(app)
+
+    # Establish an application context before running the tests.
+    ctx = app.app_context()
+    ctx.push()
+
+    create_test_data(app)
 
     def teardown():
-        with app.app_context():
-            # Teardown. Adapted from http://stackoverflow.com/a/5003705. A simple db.drop_all() works, but doubles test time. This should remove all data, but keep the schema.
-            for table in reversed(db.metadata.sorted_tables):
-                db.session.execute(table.delete())
-            db.session.commit()
+        # Teardown. Adapted from http://stackoverflow.com/a/5003705. A simple db.drop_all() works, but doubles test time. This should remove all data, but keep the schema.
+        for table in reversed(db.metadata.sorted_tables):
+            db.session.execute(table.delete())
+        db.session.commit()
+
+        ctx.pop()
     request.addfinalizer(teardown)
 
     return test_db

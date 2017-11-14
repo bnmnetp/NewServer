@@ -35,8 +35,6 @@ class Config:
 class DevelopmentConfig(Config):
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DBURL')
-    SECURITY_CONFIRMABLE = False
-    SECURITY_SEND_REGISTER_EMAIL = False
 
 class ProductionConfig(Config):
     DEBUG = False
@@ -50,8 +48,6 @@ class ProductionConfig(Config):
 
 class TestingConfig(Config):
     DEBUG = True
-    SECURITY_CONFIRMABLE = False
-    SECURITY_SEND_REGISTER_EMAIL = False
 
     # In-memory sqlite DB
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
@@ -63,6 +59,8 @@ class TestingConfig(Config):
     LOGIN_DISABLED = False
     # Suppress the sending of emails.
     MAIL_SUPPRESS_SEND = True
+    # Enable url_for() without request context.
+    SERVER_NAME = 'localhost'
 
 config = {
     'development': DevelopmentConfig,
