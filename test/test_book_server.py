@@ -20,20 +20,30 @@ from contextlib import contextmanager
 # -------------
 # The ``app`` import is required for the fixtures to work.
 from base_test import BaseTest, app, LoginContext
+from runestone.book_server.server import book_server
+from runestone.api.endpoints import api
 from runestone.model import db, Courses
 
-# The common path for testing the server.
-def p(_str=''):
-    return '/runestone/' + _str
+# Testing
+# =======
+#
+# Utilities
+# ---------
+# The common path prefix for testing the server: sp (for server path).
+def sp(_str=''):
+    return book_server.url_prefix + '/' + _str
+# Same for the book API: ap (api path)
+def ap(_str=''):
+    return api.url_prefix + '/' + _str
 
-# Tests
-# -----
+# Server tests
+# ------------
 class TestRunestoneServer(BaseTest):
     # Check the root path view. This is fairly pointless, since this is a temporary page anyway.
     def test_1(self):
-        self.must_login(p())
+        self.must_login(sp())
         with self.login_context:
-            self.get_valid(p(), b'Hello World!', follow_redirects=True)
+            self.get_valid(sp(), b'Hello World!', follow_redirects=True)
 
     # Make sure the 404 page works.
     def test_2(self):
@@ -42,7 +52,7 @@ class TestRunestoneServer(BaseTest):
     # Check that accessing a book via a child course works.
     def test_3(self):
         # Make sure this requires a login.
-        url = p('test_child_course1/foo.html')
+        url = sp('test_child_course1/foo.html')
         self.must_login(url)
 
         mock_render_patch = patch('runestone.book_server.server.render_template', return_value='')
@@ -56,30 +66,33 @@ class TestRunestoneServer(BaseTest):
 
         # Check that flags are passed (login_required and python3 are different). Check that no login is needed.
         with mock_render_patch as mock_render:
-            self.get_valid(p('test_child_course2/foo.html'))
+            self.get_valid(sp('test_child_course2/foo.html'))
             mock_render.assert_called_once_with('test_base_course/foo.html', basecourse='test_base_course', login_required='false', python3='false')
 
     # Check that static assets are passed through.
     def test_4(self):
         with self.login_context:
             with patch('runestone.book_server.server.send_from_directory', return_value='') as mock_send_from_directory:
-                self.get_valid(p('test_child_course1/_static/foo.css'))
+                self.get_valid(sp('test_child_course1/_static/foo.css'))
                 # Check only the second arg. Note that ``call_args`` `returns <https://docs.python.org/3/library/unittest.mock.html#calls-as-tuples>`_ ``(args, kwargs)``.
                 assert mock_send_from_directory.call_args[0][1] == 'test_base_course/_static/foo.css'
 
-                self.get_valid(p('test_child_course1/_images/foo.png'))
+                self.get_valid(sp('test_child_course1/_images/foo.png'))
                 assert mock_send_from_directory.call_args[0][1] == 'test_base_course/_images/foo.png'
 
+# API tests
+# ---------
 class TestRunestoneApi(BaseTest):
     # An example of checking the JSON returned from a URL.
-    questions_url = '/book/unsigned_8-_and_16-bit_ops/introduction.s.html/questions'
-    def example_test_9(self):
+    def test_1(self):
         with self.login_context:
-            self.get_valid_json(self.questions_url,
-                           {'define_label': ['foo:', 2, 2, 'correct'],
-                            'comment': ['10000', 0, 1, 'Incorrect.']})
+            self.get_valid_json(ap('hsblog'), {
+                'log': True
+            })
 
-class TestRunestoneModel(BaseTest):
+# Web2PyBoolean tests
+# -------------------
+class TestWeb2PyBoolean(BaseTest):
     @contextmanager
     def manual_write_bool(self, bool_):
         # Change a True/False to 'T' or 'F'. Leave None as is.

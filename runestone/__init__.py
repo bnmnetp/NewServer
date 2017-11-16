@@ -23,6 +23,8 @@ def create_app(config_name):
     user_manager.init_app(app)
 
     from runestone.book_server.server import book_server
+    from runestone.api.endpoints import api
     app.register_blueprint(book_server)
+    app.register_blueprint(api)
 
     return app

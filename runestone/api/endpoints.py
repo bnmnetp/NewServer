@@ -1,14 +1,13 @@
 # ************************************************
 # |docname| - provide Ajax endpoints used by books
 # ************************************************
-from flask import Blueprint, request, session, jsonify
-from ..model import UseInfo
 import uuid
 import datetime
+from flask import Blueprint, request, session, jsonify, current_app
+from ..model import UseInfo, db
 from flask_user import current_user
 
 api = Blueprint('api', __name__, url_prefix='/api')
-from runestone import db, app
 
 @api.route('/hsblog')
 def log_book_event():
@@ -41,12 +40,12 @@ def log_book_event():
     # the page.
     session['ipuser'] = sid
 
-    act = request.args.act
-    div_id = request.args.div_id
-    event = request.args.event
-    course = request.args.course
+    act = request.args.get('act')
+    div_id = request.args.get('div_id')
+    event = request.args.get('event')
+    course = request.args.get('course')
     ts = datetime.datetime.now()
-    tt = request.args.time
+    tt = request.args.get('time')
     if not tt:
         tt = 0
 
@@ -54,7 +53,7 @@ def log_book_event():
         db.add(UseInfo(sid=sid, act=act[0:512], div_id=div_id, event=event, timestamp=ts, course_id=course))
         db.commit()
     except:
-        app.logger.debug('failed to insert log record for {} in {} : {} {} {}'.format(sid, course, div_id, event, act))
+        current_app.logger.debug('failed to insert log record for {} in {} : {} {} {}'.format(sid, course, div_id, event, act))
 
     # See `jsonify <http://flask.pocoo.org/docs/0.12/api/#flask.json.jsonify>`_. TODO: Return False if there's no session?
     return jsonify({'log':True})
