@@ -41,9 +41,35 @@ class LoginContext:
     def __exit__(self, exc_type, exc_value, traceback):
         self.test_class.logout()
 
+# Execute an HTTP verb, verifying the results. Return the response. On failure, write the resulting HTML to ``tmp.html``.
+def check_verb(
+    # A function to execute an HTTP verb -- a method of `test.Client <http://werkzeug.pocoo.org/docs/0.12/test/#werkzeug.test.Client>`_ and `TestClient <http://flask.pocoo.org/docs/0.12/api/#test-client>`_. For example, ``test_client.get``.
+    verb_func,
+    # _`url`: The bare URL to reqeust (so that ``/`` refers to the root of the web site).
+    url,
+    # _`expected_status`: The expected `status code <http://flask.pocoo.org/docs/0.11/api/#flask.Response.status_code>`_ returned by the web server. See https://en.wikipedia.org/wiki/List_of_HTTP_status_codes for a list of all codes.
+    expected_status,
+    # _`expected_response_phrase`: A phrase which must be ``in`` the text returned. The type must be ``bytes``; the default argument of ``b''`` skips this check.
+    expected_response_phrase=b'',
+    # _`kwargs`: Any additional keyword arguments to pass to `test_client.get <http://werkzeug.pocoo.org/docs/0.11/test/#werkzeug.test.Client.get>`_, such as ``follow_redirects=True``.
+    **kwargs):
+
+    # The call to an HTTP verb returns a `response object <http://flask.pocoo.org/docs/0.11/api/#response-objects>`_.
+    rv = verb_func(url, **kwargs)
+    try:
+        # Check the `status code`_ and the `data <http://flask.pocoo.org/docs/0.11/api/#flask.Response.data>`_.
+        assert rv.status_code == expected_status
+        assert expected_response_phrase in rv.data
+    except AssertionError:
+        # On a test failure, save the resulting web page for debug purposes.
+        with open('tmp.html', 'wb') as f:
+            f.write(rv.data)
+        raise
+    return rv
+
 # Apply these fixes to every test `automatically <https://docs.pytest.org/en/latest/fixture.html#using-fixtures-from-classes-modules-or-projects>`_.
 @pytest.mark.usefixtures("test_client_")
-# Group everything in a class, so it's easy to share the test_client_.
+# Group everything in a class, so it's easy to share the ``test_client``.
 class BaseTest:
     # Create a fixture which stores the test_client in ``self``.
     @pytest.fixture()
@@ -53,41 +79,30 @@ class BaseTest:
 
     # _`get_check`: Get a web page, checking its returned status code and optionally its contents.
     def get_check(self,
-        # _`url`: The bare URL to reqeust (so that ``/`` refers to the root of the web site).
+        # See `url`_.
         url,
-        # The expected `status code <http://flask.pocoo.org/docs/0.11/api/#flask.Response.status_code>`_ returned by the web server. See https://en.wikipedia.org/wiki/List_of_HTTP_status_codes for a list of all codes.
+        # See `expected_status`_.
         expected_status,
-        # _`expected_response_phrase`: A phrase which must be ``in`` the text returned. The type must be ``bytes``; the default argument of ``b''`` skips this check.
+        # See `expected_response_phrase`_.
         expected_response_phrase=b'',
-        # _`kwargs`: Any additional keyword arguments to pass to `test_client.get <http://werkzeug.pocoo.org/docs/0.11/test/#werkzeug.test.Client.get>`_, such as ``follow_redirects=True``.
+        # See `kwargs`_.
         **kwargs):
 
-        # The call to `test_client.get`_ returns a `response object <http://flask.pocoo.org/docs/0.11/api/#response-objects>`_.
-        rv = self.test_client.get(url, **kwargs)
-        try:
-            # Check the `status code`_ and the `data <http://flask.pocoo.org/docs/0.11/api/#flask.Response.data>`_.
-            assert rv.status_code == expected_status
-            assert expected_response_phrase in rv.data
-        except AssertionError:
-            # On a test failure, save the resulting web page for debug purposes.
-            with open('tmp.html', 'wb') as f:
-                f.write(rv.data)
-            raise
-        return rv
+        # Use to `test_client.get`_ verb.
+        return check_verb(self.test_client.get, url, expected_status, expected_response_phrase, **kwargs)
 
-    def post_check(self, url, expected_status, expected_response_phrase=b'', **kwargs):
-        rv = self.test_client.post(url, **kwargs)
-        try:
-            # Check the `status code`_ and the `data <http://flask.pocoo.org/docs/0.11/api/#flask.Response.data>`_.
-            assert rv.status_code == expected_status
-            assert expected_response_phrase in rv.data
-        except AssertionError:
-            # On a test failure, save the resulting web page for debug purposes.
-            with open('tmp.html', 'wb') as f:
-                f.write(rv.data)
-            raise
-        return rv
+    def post_check(self,
+        # See `url`_.
+        url,
+        # See `expected_status`_.
+        expected_status,
+        # See `expected_response_phrase`_.
+        expected_response_phrase=b'',
+        # See `kwargs`_.
+        **kwargs):
 
+        # Use to `test_client.get`_ verb.
+        return check_verb(self.test_client.post, url, expected_status, expected_response_phrase, **kwargs)
 
     # _`get_valid`: Get a web page, verifying the `status code`_ was 200 (OK). This function returns the value produced by get_check_.
     def get_valid(self,
@@ -140,4 +155,5 @@ class BaseTest:
             b'You have signed out successfully.', follow_redirects=True)
 
     def must_login(self, url):
+        self.logout()
         return self.get_valid(url, b'You must be signed in to access', follow_redirects=True)
