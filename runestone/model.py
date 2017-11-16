@@ -16,6 +16,8 @@ class Web2PyBoolean(types.TypeDecorator):
     def process_bind_param(self, value, dialect):
         if value:
             return 'T'
+        elif value is None:
+            return None
         elif not value:
             return 'F'
         else:
@@ -26,6 +28,8 @@ class Web2PyBoolean(types.TypeDecorator):
             return True
         elif value == 'F':
             return False
+        elif value is None:
+            return None
         else:
             assert False
 
