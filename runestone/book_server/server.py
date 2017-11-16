@@ -3,8 +3,8 @@
 # ***************************
 import os
 from pathlib import Path
-from flask import Blueprint, render_template, send_from_directory, safe_join, request, redirect, url_for
-from flask_user import login_required
+from flask import Blueprint, render_template, send_from_directory, safe_join, request, redirect, url_for, current_app
+from flask_user import login_required, is_authenticated
 
 from ..model import Courses
 
@@ -23,8 +23,8 @@ def js_bool(b):
     else:
         assert False
 
+
 @book_server.route('/<string:course>/<path:pageinfo>')
-@login_required
 def serve_page(course, pageinfo):
     '''
     Lookup information and fill in template information in eBookConfig.  Specifically:
@@ -43,6 +43,12 @@ def serve_page(course, pageinfo):
     base_course = the_course.base_course
     filesystem_path = safe_join(base_course, pageinfo)
 
+    # Enforce is_login_required.
+    is_login_required = the_course.login_required
+    if is_login_required and not is_authenticated():
+        # Redirect to unauthenticated page
+        return current_app.user_manager.unauthenticated_view_function()
+
     # See if this is static content in the book.
     if Path(pageinfo).parts[0] in ('_static', '_images'):
         # We have to efficiently serve all of the assets, this seems a common way to do so.
@@ -58,7 +64,6 @@ def serve_page(course, pageinfo):
         return send_from_directory(templates_path, filesystem_path)
     else:
         course_version = '3'
-        python3 = js_bool(the_course.python3)
-        login_required = js_bool(the_course.login_required)
+        python3_js = js_bool(the_course.python3)
 
-        return render_template(filesystem_path, basecourse=base_course, python3=python3, login_required=login_required)
+        return render_template(filesystem_path, basecourse=base_course, python3=python3_js, login_required=js_bool(is_login_required))

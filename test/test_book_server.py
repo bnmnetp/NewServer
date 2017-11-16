@@ -45,16 +45,19 @@ class TestRunestoneServer(BaseTest):
         url = p('test_child_course1/foo.html')
         self.must_login(url)
 
+        mock_render_patch = patch('runestone.book_server.server.render_template', return_value='')
         with self.login_context:
-            with patch('runestone.book_server.server.render_template', return_value='') as mock_render:
+            with mock_render_patch as mock_render:
+                # When logged in, everything works.
                 self.get_valid(url)
-                mock_render.assert_called_once_with('test_base_course/foo.html', basecourse='test_base_course', login_required='true', python3='true')
+            # When not logged in, a login should be requested.
+            self.must_login(url)
+            mock_render.assert_called_once_with('test_base_course/foo.html', basecourse='test_base_course', login_required='true', python3='true')
 
-        # Check that flags are passed (login_required and python3 are different).
-        with self.login_context:
-            with patch('runestone.book_server.server.render_template', return_value='') as mock_render:
-                self.get_valid(p('test_child_course2/foo.html'))
-                mock_render.assert_called_once_with('test_base_course/foo.html', basecourse='test_base_course', login_required='false', python3='false')
+        # Check that flags are passed (login_required and python3 are different). Check that no login is needed.
+        with mock_render_patch as mock_render:
+            self.get_valid(p('test_child_course2/foo.html'))
+            mock_render.assert_called_once_with('test_base_course/foo.html', basecourse='test_base_course', login_required='false', python3='false')
 
     # Check that static assets are passed through.
     def test_4(self):
