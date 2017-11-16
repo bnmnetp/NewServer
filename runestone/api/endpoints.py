@@ -1,34 +1,46 @@
-# **********************************
-# |docname| - provide Ajax endpoints
-# **********************************
-from flask import Blueprint, request, make_response
-from ..model import LogInfo
+# ************************************************
+# |docname| - provide Ajax endpoints used by books
+# ************************************************
+from flask import Blueprint, request, session, jsonify
+from ..model import UseInfo
 import uuid
 import datetime
-import json
-
+from flask_user import current_user
 
 api = Blueprint('api', __name__, url_prefix='/api')
-from runestone import db,app
+from runestone import db, app
 
 @api.route('/hsblog')
 def log_book_event():
-    setCookie = False
-    sid = request.cookies.get('ipuser')  # quickest way to get the sid
+    # A `proxy <https://flask-login.readthedocs.io/en/latest/#flask_login.current_user>`_ for the currently logged-in user. It returns ``None`` if no user is logged in.
+    if current_user:
+        # Does ``current_user`` consist of a User object? Or something else?
+        sid = current_user.username
+        # compareAndUpdateCookieData(sid) inlined here.
+        if ('ipuser' in session) and (session['ipuser'] != sid):
+            # See if this user exists.
+            q = UseInfo[sid].q
+            if q.length():
+                # Yes, so update all ``sid`` entries.
+                for _ in q:
+                    q.sid = sid
+            else:
+                # No, so create a new entry. TODO: This makes no sense to me. A more complete entry will be added below -- wait until then!
+                db.session.add(UseInfo(sid=sid))
+                db.session.commit()
+    else:
+        # See `request.cookies <http://flask.pocoo.org/docs/0.12/api/#flask.Request.cookies>`_.
+        if 'ipuser' in request.cookies:
+            sid = session['ipuser']
+        else:
+            # TODO: does `request.remove_addr <http://werkzeug.pocoo.org/docs/0.12/wrappers/#werkzeug.wrappers.BaseRequest.remote_addr>`_ work?
+            sid = str(uuid.uuid1().int)+"@"+request.remote_addr
 
-    ## if auth.user:    # todo: How can we make web2py and flask share login information? - we can get the session cookie but we need to unscramblepython
-    ##     sid = auth.user.username
-    ##     compareAndUpdateCookieData(sid)
-    ##     setCookie = True    # we set our own cookie anyway to eliminate many of the extraneous anonymous
-    ##                         # log entries that come from auth timing out even but the user hasn't reloaded
-    ##                         # the page.
-    ## else:
-    ##     if request.cookies.has_key('ipuser'):
-    ##         sid = request.cookies['ipuser'].value
-    ##         setCookie = True
-    ##     else:
-    ##         sid = str(uuid.uuid1().int)+"@"+request.client
-    ##         setCookie = True
+    # We set our own session anyway to eliminate many of the extraneous anonymous
+    # log entries that come from auth timing out even but the user hasn't reloaded
+    # the page.
+    session['ipuser'] = sid
+
     act = request.args.act
     div_id = request.args.div_id
     event = request.args.event
@@ -39,18 +51,10 @@ def log_book_event():
         tt = 0
 
     try:
-        li = LogInfo(sid=sid, act=act, div_id=div_id, event=event, timestamp=ts, course_id=course)
-        db.add(li)
+        db.add(UseInfo(sid=sid, act=act[0:512], div_id=div_id, event=event, timestamp=ts, course_id=course))
         db.commit()
     except:
         app.logger.debug('failed to insert log record for {} in {} : {} {} {}'.format(sid, course, div_id, event, act))
 
-    response = make_response()
-    response.headers['content-type'] = 'application/json'
-    res = {'log':True}
-    if setCookie:
-        response.cookies['ipuser'] = sid
-        response.cookies['ipuser']['expires'] = 24*3600*90
-        response.cookies['ipuser']['path'] = '/'
-    return json.dumps(res)
-
+    # See `jsonify <http://flask.pocoo.org/docs/0.12/api/#flask.json.jsonify>`_. TODO: Return False if there's no session?
+    return jsonify({'log':True})
