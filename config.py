@@ -5,7 +5,7 @@ import os
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 class Config:
-    # Set the `secret_key <http://flask.pocoo.org/docs/0.12/api/#flask.Flask.secret_key>`_ to enable `sessions <http://flask.pocoo.org/docs/0.12/api/#sessions>`_ in Flask.
+    # Set the `secret_key <http://flask.pocoo.org/docs/0.12/api/#flask.Flask.secret_key>`_ to enable `sessions <http://flask.pocoo.org/docs/0.12/api/#sessions>`_ in Flask. See `the note under sessions <http://flask.pocoo.org/docs/0.12/quickstart/#sessions>`_ for how to generate a good key.
     SECRET_KEY = 'top-secret'
 
     # Flask-SQLAlchemy
@@ -51,7 +51,7 @@ class TestingConfig(Config):
 
     # In-memory sqlite DB
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-    # Propagate exceptions (don't show 500 error page).
+    # Propagate exceptions (don't show 500 error page). See `testing <http://flask.pocoo.org/docs/0.12/api/#flask.Flask.testing>`_.
     TESTING = True
     # Disable CSRF token in Flask-Wtf.
     WTF_CSRF_ENABLED = False
