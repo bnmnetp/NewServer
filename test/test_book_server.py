@@ -1,6 +1,7 @@
-# ***************************************************************
-# |docname| - Unit tests for `../runestone/book_server/server.py`
-# ***************************************************************
+# **********************
+# |docname| - Unit tests
+# **********************
+# .. contents::
 #
 # Imports
 # =======
@@ -11,6 +12,7 @@
 # ----------------
 from unittest.mock import patch
 from contextlib import contextmanager
+from datetime import datetime, timedelta
 
 # Third-party imports
 # -------------------
@@ -24,11 +26,8 @@ from runestone.book_server.server import book_server
 from runestone.api.endpoints import api
 from runestone.model import db, Courses, UseInfo
 
-# Testing
-# =======
-#
 # Utilities
-# ---------
+# =========
 # The common path prefix for testing the server: sp (for server path).
 def sp(_str='', **kwargs):
     return url_joiner(book_server.url_prefix, _str, **kwargs)
@@ -37,7 +36,7 @@ def ap(_str='', **kwargs):
     return url_joiner(api.url_prefix, _str, **kwargs)
 
 # Server tests
-# ------------
+# ============
 class TestRunestoneServer(BaseTest):
     # Check the root path view. This is fairly pointless, since this is a temporary page anyway.
     def test_1(self):
@@ -81,28 +80,50 @@ class TestRunestoneServer(BaseTest):
                 assert mock_send_from_directory.call_args[0][1] == 'test_base_course/_images/foo.png'
 
 # API tests
-# ---------
+# =========
 class TestRunestoneApi(BaseTest):
-    # An example of checking the JSON returned from a URL.
+    hsblog = 'hsblog'
+
+    # Check the consistency of values put in UseInfo.
     def test_1(self):
         with self.login_context:
-            self.get_valid_json(ap('hsblog', act=1, div_id=2, event=3, course=4, time=5), dict(
+            self.get_valid_json(ap(self.hsblog, act=1, div_id=2, event=3, course=4, time=5), dict(
                 log=True,
                 is_authenticated=True,
             ))
+            # Check the timestamp.
+            assert (UseInfo[self.username].timestamp.q.scalar() - datetime.now()) < timedelta(seconds=2)
             # Check selected columns of the database record. (Omit the id and timestamp).
-            u = UseInfo['brad@test.user']._query.add_columns(UseInfo.sid, UseInfo.act, UseInfo.div_id, UseInfo.event, UseInfo.course_id).all()
+            u = UseInfo[self.username]._query.add_columns(UseInfo.sid, UseInfo.act, UseInfo.div_id, UseInfo.event, UseInfo.course_id).all()
             # The result of the query is a KeyedTyple. Use `_asdict <http://docs.sqlalchemy.org/en/latest/orm/query.html#sqlalchemy.util.KeyedTuple._asdict>`_ to convert it to a dict for easy comparison.
             assert [_._asdict() for _ in u] == [dict(
-                sid='brad@test.user',
+                sid=self.username,
                 act='1',
                 div_id='2',
                 event='3',
                 course_id='4',
             )]
 
+    # Check that unauthenticed access produces a consistent sid.
+    def test_2(self):
+        def go(is_auth=False):
+            self.get_valid_json(ap(self.hsblog, act='xxx'), dict(
+                log=True,
+                is_authenticated=is_auth,
+            ))
+        go()
+        go()
+        r = db.session.query(UseInfo.sid).all()
+        assert len(r) == 2
+        assert r[0] == r[1]
+
+        # If this user logs in, then make sure the sid is updated. There should now to be log entries, all with sid=username.
+        with self.login_context:
+            go(True)
+        assert UseInfo[self.username].q.count() == 3
+
 # Web2PyBoolean tests
-# -------------------
+# ===================
 class TestWeb2PyBoolean(BaseTest):
     @contextmanager
     def manual_write_bool(self, bool_):

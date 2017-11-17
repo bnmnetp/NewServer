@@ -80,7 +80,8 @@ class BaseTest:
     @pytest.fixture()
     def test_client_(self, test_client):
         self.test_client = test_client
-        self.login_context = LoginContext(self, 'brad@test.user', 'grouplens')
+        self.username = 'brad@test.user'
+        self.login_context = LoginContext(self, self.username, 'grouplens')
 
     # _`get_check`: Get a web page, checking its returned status code and optionally its contents.
     def get_check(self,

@@ -2,7 +2,7 @@
 # |docname| - provide Ajax endpoints used by books
 # ************************************************
 import uuid
-import datetime
+from datetime import datetime
 from flask import Blueprint, request, session, jsonify, current_app
 from ..model import UseInfo, db
 from flask_user import current_user, is_authenticated
@@ -11,9 +11,8 @@ api = Blueprint('api', __name__, url_prefix='/api')
 
 @api.route('/hsblog')
 def log_book_event():
-    # A `proxy <https://flask-login.readthedocs.io/en/latest/#flask_login.current_user>`_ for the currently logged-in user. It returns ``None`` if no user is logged in.
-    if current_user:
-        # Does ``current_user`` consist of a User object? Or something else?
+    if is_authenticated():
+        # ``current_user`` is a `proxy <https://flask-login.readthedocs.io/en/latest/#flask_login.current_user>`_ for the currently logged-in user. It returns ``None`` if no user is logged in.
         sid = current_user.username
         # If the user wasn't logged in, but is now, update all ``hsblog`` entries to their username. TODO: What about all the questions they answered? Are these in need up cascaded updates as well?
         if ('ipuser' in session) and (session['ipuser'] != sid):
@@ -22,7 +21,7 @@ def log_book_event():
                 _.sid = sid
     else:
         # Create a uuid for a user that's not logged in. See `request.cookies <http://flask.pocoo.org/docs/0.12/api/#flask.Request.cookies>`_.
-        if 'ipuser' in request.cookies:
+        if 'ipuser' in session:
             sid = session['ipuser']
         else:
             # See `request.remove_addr <http://werkzeug.pocoo.org/docs/0.12/wrappers/#werkzeug.wrappers.BaseRequest.remote_addr>`_.
@@ -39,7 +38,7 @@ def log_book_event():
     event = request.args.get('event')
     course = request.args.get('course')
     tt = request.args.get('time', 0)
-    ts = datetime.datetime.now()
+    ts = datetime.now()
 
     try:
         db.session.add(UseInfo(sid=sid, act=act[0:512], div_id=div_id, event=event, timestamp=ts, course_id=course))
