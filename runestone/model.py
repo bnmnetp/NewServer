@@ -1,14 +1,30 @@
 # *****************************************************************************
 # |docname| - define the tables necessary for serving textbooks, api and logins
 # *****************************************************************************
+#
+# Imports
+# =======
+# These are listed in the order prescribed by `PEP 8
+# <http://www.python.org/dev/peps/pep-0008/#imports>`_.
+#
+# Standard library
+# ----------------
+# None
+
+# Third-party imports
+# -------------------
 from sqlalchemy import DateTime, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, backref
+import sqlalchemy.types as types
 from flask_user import UserMixin, UserManager, SQLAlchemyAdapter
 from gluon.validators import CRYPT
-import sqlalchemy.types as types
 
+# Local imports
+# -------------
 from runestone import db
 
+# Web2Py boolean type
+# ===================
 # Define a web2py-compatible Boolean type. See `custom types <http://docs.sqlalchemy.org/en/latest/core/custom_types.html>`_.
 class Web2PyBoolean(types.TypeDecorator):
     impl = types.CHAR(1)
@@ -36,6 +52,8 @@ class Web2PyBoolean(types.TypeDecorator):
     def copy(self, **kw):
         return Web2PyBoolean(self.impl.length)
 
+# Models
+# ======
 class Courses(db.Model):
     __tablename__ = 'courses'
     id = db.Column(db.Integer, primary_key=True)
@@ -96,6 +114,8 @@ class Auth_User(db.Model, UserMixin):
 
 # Flask-User customization
 # ========================
+# This can't be placed in `extensions.py`, because it needs the ``User`` model to be defined.
+#
 # Use's web2py's encryption. See http://flask-user.readthedocs.io/en/v0.6/customization.html#password-hashing.
 class UserManagerWeb2Py(UserManager):
     def init_app(self, app):

@@ -17,16 +17,17 @@ Installation
 #.  ``pip install -U -r requirements.txt``
 #.  Download web2py. Copy the ``gluons`` directory to the package root, so it can be imported.
 #.  Edit `config.py` to set the web2py credentials for your database.
+#.  Place any books to serve in ``runestone/book_server/templates``.
 
 Running
 -------
 #.  Set the ``DEV_DBURL`` to a valid DB URL. (See `config.py`).
 #.  Run ``python wsgi.py``
-#.  Browse to http://127.0.0.1:8080/runestone.
+#.  Browse to http://127.0.0.1:8080/runestone. To view a book, browse to http://127.0.0.1:8080/runestone/course_name where ``course_name`` is the name of the course set up in the courses table.
 
 Testing
 -------
-Run ``python -m pytest test`` from the root project directory.
+Run ``python -m pytest tests`` from the root project directory.
 
 Building docs
 -------------

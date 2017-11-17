@@ -1,14 +1,35 @@
 # ************************************************
 # |docname| - provide Ajax endpoints used by books
 # ************************************************
+#
+# Imports
+# =======
+# These are listed in the order prescribed by `PEP 8
+# <http://www.python.org/dev/peps/pep-0008/#imports>`_.
+#
+# Standard library
+# ----------------
 import uuid
 from datetime import datetime
+
+# Third-party imports
+# -------------------
 from flask import Blueprint, request, session, jsonify, current_app
-from ..model import UseInfo, db
 from flask_user import current_user, is_authenticated
 
+# Local imports
+# -------------
+from ..model import UseInfo, db
+
+# Blueprint
+# =========
+# Define the API's blueprint.
 api = Blueprint('api', __name__, url_prefix='/api')
 
+
+# hsblog enpoint
+# ==============
+# Log data to UseInfo and to the appropriate table.
 @api.route('/hsblog')
 def log_book_event():
     if is_authenticated():
@@ -25,7 +46,7 @@ def log_book_event():
             sid = session['ipuser']
         else:
             # See `request.remove_addr <http://werkzeug.pocoo.org/docs/0.12/wrappers/#werkzeug.wrappers.BaseRequest.remote_addr>`_.
-            sid = str(uuid.uuid1().int)+"@"+request.remote_addr
+            sid = str(uuid.uuid1().int) + "@" + request.remote_addr
 
     # We set our own session anyway to eliminate many of the extraneous anonymous
     # log entries that come from auth timing out even but the user hasn't reloaded

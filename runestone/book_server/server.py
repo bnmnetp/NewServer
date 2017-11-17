@@ -1,29 +1,51 @@
 # ***************************
 # |docname| - The core server
 # ***************************
+#
+# Imports
+# =======
+# These are listed in the order prescribed by `PEP 8
+# <http://www.python.org/dev/peps/pep-0008/#imports>`_.
+#
+# Standard library
+# ----------------
 import os
 from pathlib import Path
-from flask import Blueprint, render_template, send_from_directory, safe_join, request, redirect, url_for, current_app
+
+# Third-party imports
+# -------------------
+from flask import (
+    Blueprint, render_template, send_from_directory, safe_join, redirect,
+    current_app,
+)
 from flask_user import login_required, is_authenticated
 
+# Local imports
+# -------------
 from ..model import Courses
 
+# Blueprint
+# =========
 book_server = Blueprint('book_server', __name__, template_folder='templates', url_prefix='/runestone')
 
+
+# Endpoints
+# =========
+# Just for testing. Mostly useless.
 @book_server.route('/')
 @login_required
 def hello_world():
     return 'Hello World! {}<br><a href="/user/sign-out">Log out</a>'.format(os.getcwd())
 
+
+# Transform a Boolean into a JavaScript string.
 def js_bool(b):
-    if b:
-        return 'true'
-    elif not b:
-        return 'false'
-    else:
-        assert False
+    return str(bool(b)).lower()
 
 
+# Book router
+# ===========
+# This routines all request for book pages to the appropriate file.
 @book_server.route('/<string:course>/<path:pageinfo>')
 def serve_page(course, pageinfo):
     '''
@@ -63,7 +85,6 @@ def serve_page(course, pageinfo):
         templates_path = str(Path(book_server.root_path) / book_server.template_folder)
         return send_from_directory(templates_path, filesystem_path)
     else:
-        course_version = '3'
         python3_js = js_bool(the_course.python3)
 
         return render_template(filesystem_path, basecourse=base_course, python3=python3_js, login_required=js_bool(is_login_required))
