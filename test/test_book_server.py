@@ -19,10 +19,10 @@ from contextlib import contextmanager
 # Local imports
 # -------------
 # The ``app`` import is required for the fixtures to work.
-from base_test import BaseTest, app, LoginContext
+from base_test import BaseTest, app, LoginContext, url_joiner
 from runestone.book_server.server import book_server
 from runestone.api.endpoints import api
-from runestone.model import db, Courses
+from runestone.model import db, Courses, UseInfo
 
 # Testing
 # =======
@@ -30,11 +30,11 @@ from runestone.model import db, Courses
 # Utilities
 # ---------
 # The common path prefix for testing the server: sp (for server path).
-def sp(_str=''):
-    return book_server.url_prefix + '/' + _str
+def sp(_str='', **kwargs):
+    return url_joiner(book_server.url_prefix, _str, **kwargs)
 # Same for the book API: ap (api path)
-def ap(_str=''):
-    return api.url_prefix + '/' + _str
+def ap(_str='', **kwargs):
+    return url_joiner(api.url_prefix, _str, **kwargs)
 
 # Server tests
 # ------------
@@ -86,9 +86,20 @@ class TestRunestoneApi(BaseTest):
     # An example of checking the JSON returned from a URL.
     def test_1(self):
         with self.login_context:
-            self.get_valid_json(ap('hsblog'), {
-                'log': True
-            })
+            self.get_valid_json(ap('hsblog', act=1, div_id=2, event=3, course=4, time=5), dict(
+                log=True,
+                is_authenticated=True,
+            ))
+            # Check selected columns of the database record. (Omit the id and timestamp).
+            u = UseInfo['brad@test.user']._query.add_columns(UseInfo.sid, UseInfo.act, UseInfo.div_id, UseInfo.event, UseInfo.course_id).all()
+            # The result of the query is a KeyedTyple. Use `_asdict <http://docs.sqlalchemy.org/en/latest/orm/query.html#sqlalchemy.util.KeyedTuple._asdict>`_ to convert it to a dict for easy comparison.
+            assert [_._asdict() for _ in u] == [dict(
+                sid='brad@test.user',
+                act='1',
+                div_id='2',
+                event='3',
+                course_id='4',
+            )]
 
 # Web2PyBoolean tests
 # -------------------

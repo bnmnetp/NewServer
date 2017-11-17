@@ -65,6 +65,12 @@ class UseInfo(db.Model):
     div_id = db.Column(db.String)
     course_id = db.Column(db.String)
 
+    # Define a default query: the username if provided a string. Otherwise, automatically fall back to the id.
+    @classmethod
+    def default_query(cls, key):
+        if isinstance(key, str):
+            return cls.sid == key
+
 class Auth_User(db.Model, UserMixin):
     __tablename__ = 'auth_user'
     id = Column(Integer, primary_key=True)

@@ -5,7 +5,7 @@ import uuid
 import datetime
 from flask import Blueprint, request, session, jsonify, current_app
 from ..model import UseInfo, db
-from flask_user import current_user
+from flask_user import current_user, is_authenticated
 
 api = Blueprint('api', __name__, url_prefix='/api')
 
@@ -15,24 +15,17 @@ def log_book_event():
     if current_user:
         # Does ``current_user`` consist of a User object? Or something else?
         sid = current_user.username
-        # compareAndUpdateCookieData(sid) inlined here.
+        # If the user wasn't logged in, but is now, update all ``hsblog`` entries to their username. TODO: What about all the questions they answered? Are these in need up cascaded updates as well?
         if ('ipuser' in session) and (session['ipuser'] != sid):
-            # See if this user exists.
-            q = UseInfo[sid].q
-            if q.length():
-                # Yes, so update all ``sid`` entries.
-                for _ in q:
-                    q.sid = sid
-            else:
-                # No, so create a new entry. TODO: This makes no sense to me. A more complete entry will be added below -- wait until then!
-                db.session.add(UseInfo(sid=sid))
-                db.session.commit()
+            # Yes, so update all ``sid`` entries.
+            for _ in UseInfo[sid]:
+                _.sid = sid
     else:
-        # See `request.cookies <http://flask.pocoo.org/docs/0.12/api/#flask.Request.cookies>`_.
+        # Create a uuid for a user that's not logged in. See `request.cookies <http://flask.pocoo.org/docs/0.12/api/#flask.Request.cookies>`_.
         if 'ipuser' in request.cookies:
             sid = session['ipuser']
         else:
-            # TODO: does `request.remove_addr <http://werkzeug.pocoo.org/docs/0.12/wrappers/#werkzeug.wrappers.BaseRequest.remote_addr>`_ work?
+            # See `request.remove_addr <http://werkzeug.pocoo.org/docs/0.12/wrappers/#werkzeug.wrappers.BaseRequest.remote_addr>`_.
             sid = str(uuid.uuid1().int)+"@"+request.remote_addr
 
     # We set our own session anyway to eliminate many of the extraneous anonymous
@@ -40,20 +33,19 @@ def log_book_event():
     # the page.
     session['ipuser'] = sid
 
+    # Get the request arguments.
     act = request.args.get('act')
     div_id = request.args.get('div_id')
     event = request.args.get('event')
     course = request.args.get('course')
+    tt = request.args.get('time', 0)
     ts = datetime.datetime.now()
-    tt = request.args.get('time')
-    if not tt:
-        tt = 0
 
     try:
-        db.add(UseInfo(sid=sid, act=act[0:512], div_id=div_id, event=event, timestamp=ts, course_id=course))
-        db.commit()
+        db.session.add(UseInfo(sid=sid, act=act[0:512], div_id=div_id, event=event, timestamp=ts, course_id=course))
+        db.session.commit()
     except:
         current_app.logger.debug('failed to insert log record for {} in {} : {} {} {}'.format(sid, course, div_id, event, act))
 
     # See `jsonify <http://flask.pocoo.org/docs/0.12/api/#flask.json.jsonify>`_. TODO: Return False if there's no session?
-    return jsonify({'log':True})
+    return jsonify(log=True, is_authenticated=is_authenticated())

@@ -10,6 +10,7 @@
 #
 # Standard library
 # ----------------
+from urllib.parse import urlencode
 import json
 
 # Third-party imports
@@ -28,6 +29,10 @@ app = create_app('testing')
 
 # Utilities
 # ---------
+# Create a URL based on a prefix (defined by a blueprint), an optional string (appended to the prefix), and any arguments (as keywords) to accompany a GET or POST request.
+def url_joiner(url_prefix, _str, **kwargs):
+    return '?'.join( (url_prefix + '/' + _str, urlencode(dict(kwargs))) )
+
 # Define a `context manger <https://docs.python.org/3/reference/datamodel.html#context-managers>`_ which sandwiches its body with a ``login``/``logout``.
 class LoginContext:
     def __init__(self, test_class, username, *args):
