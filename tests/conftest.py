@@ -1,7 +1,7 @@
 # ****************************************
 # |docname| - Fixture shared by unit tests
 # ****************************************
-# This provides fixtures which simplify unit tests.
+# This provides pytest `fixtures <https://docs.pytest.org/en/latest/fixture.html>`_ which simplify unit tests.
 #
 # Imports
 # =======

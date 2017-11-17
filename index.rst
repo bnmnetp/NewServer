@@ -14,7 +14,7 @@ Refer to `README` to get started with this project.
     :caption: Utilities and packaging
     :maxdepth: 2
 
-    test/toctree
+    tests/toctree
     loadtest.py
     manage.py
     requirements.txt
