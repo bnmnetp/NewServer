@@ -27,11 +27,13 @@ from runestone import create_app
 # Create a testing application.
 app = create_app('testing')
 
+
 # Utilities
 # ---------
 # Create a URL based on a prefix (defined by a blueprint), an optional string (appended to the prefix), and any arguments (as keywords) to accompany a GET or POST request.
 def url_joiner(url_prefix, _str, **kwargs):
     return '?'.join( (url_prefix + '/' + _str, urlencode(dict(kwargs))) )
+
 
 # Define a `context manger <https://docs.python.org/3/reference/datamodel.html#context-managers>`_ which sandwiches its body with a ``login``/``logout``.
 class LoginContext:
@@ -45,6 +47,7 @@ class LoginContext:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.test_class.logout()
+
 
 # Execute an HTTP verb, verifying the results. Return the response. On failure, write the resulting HTML to ``tmp.html``.
 def check_verb(
@@ -71,6 +74,20 @@ def check_verb(
             f.write(rv.data)
         raise
     return rv
+
+
+# Given a query which returns a table/class, convert it returned columns to dicts, removing all ``args`` from it.
+def result_remove(query, *args):
+    result = []
+    # Always remove SQLAlchemy internals.
+    args = list(args) + ['_sa_instance_state']
+    for _ in query:
+        d = _.__dict__
+        for key in args:
+            del d[key]
+        result.append(d)
+    return result
+
 
 # Apply these fixes to every test `automatically <https://docs.pytest.org/en/latest/fixture.html#using-fixtures-from-classes-modules-or-projects>`_.
 @pytest.mark.usefixtures("test_client_")

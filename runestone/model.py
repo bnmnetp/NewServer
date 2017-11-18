@@ -13,8 +13,7 @@
 
 # Third-party imports
 # -------------------
-from sqlalchemy import DateTime, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import backref
 import sqlalchemy.types as types
 from flask_user import UserMixin, UserManager, SQLAlchemyAdapter
 from gluon.validators import CRYPT
@@ -22,6 +21,7 @@ from gluon.validators import CRYPT
 # Local imports
 # -------------
 from runestone import db
+
 
 # Web2Py boolean type
 # ===================
@@ -52,6 +52,7 @@ class Web2PyBoolean(types.TypeDecorator):
     def copy(self, **kw):
         return Web2PyBoolean(self.impl.length)
 
+
 # Models
 # ======
 class Courses(db.Model):
@@ -72,6 +73,7 @@ class Courses(db.Model):
         if isinstance(key, str):
             return cls.course_name == key
 
+
 # Regex to convert web2py to SQLAlchemy - Field\('(\w+)',\s*'(\w+)'\), --> $1 = db.Column(db.$2)
 class UseInfo(db.Model):
     __tablename__ = 'useinfo'
@@ -89,22 +91,43 @@ class UseInfo(db.Model):
         if isinstance(key, str):
             return cls.sid == key
 
+
+class TimedExam(db.Model):
+    __tablename__ = 'timed_exam'
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime)
+    div_id = db.Column(db.String(512))
+    sid = db.Column(db.String(512))
+    course_name = db.Column(db.String(512))
+    correct = db.Column(db.Integer)
+    incorrect = db.Column(db.Integer)
+    skipped = db.Column(db.Integer)
+    time_taken = db.Column(db.Integer)
+    reset = db.Column(Web2PyBoolean)
+
+    # Define a default query: the username if provided a string. Otherwise, automatically fall back to the id.
+    @classmethod
+    def default_query(cls, key):
+        if isinstance(key, str):
+            return cls.sid == key
+
+
 class Auth_User(db.Model, UserMixin):
     __tablename__ = 'auth_user'
-    id = Column(Integer, primary_key=True)
-    username = Column(String(512), nullable=False, unique=True)
-    first_name = Column(String(512))
-    last_name = Column(String(512))
-    email = Column(String(512), unique=True)
-    password = Column(String(512))
-    created_on = Column(DateTime())
-    modified_on = Column(DateTime())
-    registration_key = Column(String(512))
-    reset_password_key = Column(String(512))
-    registration_id = Column(String(512))
-    cohort_id = Column(String(512))
-    course_id = Column(String(512))
-    active = Column(Web2PyBoolean)
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(512), nullable=False, unique=True)
+    first_name = db.Column(db.String(512))
+    last_name = db.Column(db.String(512))
+    email = db.Column(db.String(512), unique=True)
+    password = db.Column(db.String(512))
+    created_on = db.Column(db.DateTime())
+    modified_on = db.Column(db.DateTime())
+    registration_key = db.Column(db.String(512))
+    reset_password_key = db.Column(db.String(512))
+    registration_id = db.Column(db.String(512))
+    cohort_id = db.Column(db.String(512))
+    course_id = db.Column(db.String(512))
+    active = db.Column(Web2PyBoolean)
 
     # Define a default query: the username if provided a string. Otherwise, automatically fall back to the id.
     @classmethod

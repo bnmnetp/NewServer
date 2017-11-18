@@ -21,10 +21,10 @@ from datetime import datetime, timedelta
 # Local imports
 # -------------
 # The ``app`` import is required for the fixtures to work.
-from base_test import BaseTest, app, LoginContext, url_joiner
+from base_test import BaseTest, app, LoginContext, url_joiner, result_remove
 from runestone.book_server.server import book_server
 from runestone.api.endpoints import api
-from runestone.model import db, Courses, UseInfo
+from runestone.model import db, Courses, UseInfo, TimedExam
 
 # Utilities
 # =========
@@ -34,6 +34,7 @@ def sp(_str='', **kwargs):
 # Same for the book API: ap (api path)
 def ap(_str='', **kwargs):
     return url_joiner(api.url_prefix, _str, **kwargs)
+
 
 # Server tests
 # ============
@@ -82,6 +83,8 @@ class TestRunestoneServer(BaseTest):
 # API tests
 # =========
 class TestRunestoneApi(BaseTest):
+# hsblog
+# ------
     hsblog = 'hsblog'
 
     # Check the consistency of values put in UseInfo.
@@ -94,9 +97,8 @@ class TestRunestoneApi(BaseTest):
             # Check the timestamp.
             assert (UseInfo[self.username].timestamp.q.scalar() - datetime.now()) < timedelta(seconds=2)
             # Check selected columns of the database record. (Omit the id and timestamp).
-            u = UseInfo[self.username]._query.add_columns(UseInfo.sid, UseInfo.act, UseInfo.div_id, UseInfo.event, UseInfo.course_id).all()
-            # The result of the query is a KeyedTyple. Use `_asdict <http://docs.sqlalchemy.org/en/latest/orm/query.html#sqlalchemy.util.KeyedTuple._asdict>`_ to convert it to a dict for easy comparison.
-            assert [_._asdict() for _ in u] == [dict(
+            results = result_remove(UseInfo.query, 'id', 'timestamp')
+            assert results == [dict(
                 sid=self.username,
                 act='1',
                 div_id='2',
@@ -113,14 +115,67 @@ class TestRunestoneApi(BaseTest):
             ))
         go()
         go()
-        r = db.session.query(UseInfo.sid).all()
+        r = db.session.UseInfo.sid.q.all()
         assert len(r) == 2
         assert r[0] == r[1]
 
-        # If this user logs in, then make sure the sid is updated. There should now to be log entries, all with sid=username.
+        # If this user logs in, then make sure the sid is updated. There should now to be 3 log entries, all with sid=username.
         with self.login_context:
             go(True)
         assert UseInfo[self.username].q.count() == 3
+
+    # Check timed exam entries.
+    def test_3(self):
+        def go(act, log, auth=True):
+            self.get_valid_json(
+                ap(
+                    self.hsblog,
+                    act=act,
+                    event='timedExam',
+                    course='test',
+                    correct=1,
+                    incorrect=2,
+                    skipped=3,
+                    time=4,
+                    div_id='test_div',
+                ), dict(
+                    log=log,
+                    is_authenticated=auth,
+                )
+            )
+        # No entry - not logged in.
+        go('reset', True, False)
+        with self.login_context:
+            # Invalid act.
+            go('xxx', False)
+            # Valid flavors
+            go('reset', True)
+            go('finish', True)
+
+        # Check the timestamp.
+        assert (TimedExam[self.username].timestamp.q.first()[0] - datetime.now()) < timedelta(seconds=2)
+
+        # Check the results.
+        results = result_remove(TimedExam.query, 'id', 'timestamp')
+        common_items = dict(
+            sid=self.username,
+            course_name='test',
+            correct=1,
+            incorrect=2,
+            skipped=3,
+            time_taken=4,
+            div_id='test_div',
+        )
+        assert results == [
+            dict(
+                reset=True,
+                **common_items
+            ), dict(
+                reset=None,
+                **common_items,
+            )
+        ]
+
 
 # Web2PyBoolean tests
 # ===================
