@@ -55,18 +55,24 @@ class Web2PyBoolean(types.TypeDecorator):
 
 # Models
 # ======
+# Important: per the `docs <http://flask-sqlalchemy.pocoo.org/2.3/models/>`_, table names are derived from the class name; a class of ``CamelCase`` is converted to a table name of ``camel_case``.
+#
 # TODO: Document the meaning of every field. Document the relationships.
 #
 # Regex to convert web2py to SQLAlchemy - Field\('(\w+)',\s*'(\w+)'\), --> $1 = db.Column(db.$2).
-
+#
+# IdMixin
+# -------
+# Always name a table's ID field the same way.
 class IdMixin:
     id = db.Column(db.Integer, primary_key=True)
 
 class Courses(db.Model, IdMixin):
-    course_name = db.Column(db.String, unique=True)
+    # _`course_name`: The name of this course.
+    course_name = db.Column(db.String(512), unique=True)
     term_start_date = db.Column(db.Date)
-    # TODO: Why not use base_course_id instead?
-    base_course = db.Column(db.String, db.ForeignKey('courses.course_name'))
+    # TODO: Why not use base_course_id instead? The course from which this course was derived. TODO: If this is a base course, this field should be identical to the course_name_?
+    base_course = db.Column(db.String(512), db.ForeignKey('courses.course_name'))
     # TODO: This should go in a different table. Not all courses have a Python/Skuplt component.
     python3 = db.Column(Web2PyBoolean)
     login_required = db.Column(Web2PyBoolean)
@@ -83,18 +89,18 @@ class Courses(db.Model, IdMixin):
 
 # User info logged by the `hsblog endpoint`. See there for more info.
 class Useinfo(db.Model, IdMixin):
-    # When this entry was recorded by this webapp.
+    # _`timestamp`: when this entry was recorded by this webapp.
     timestamp = db.Column(db.DateTime)
-    # TODO: The student id? (user) which produced this row.
-    sid = db.Column(db.String)
+    # _`sid`: TODO: The student id? (user) which produced this row.
+    sid = db.Column(db.String(512))
     # The type of question (timed exam, fill in the blank, etc.).
-    event = db.Column(db.String)
+    event = db.Column(db.String(512))
     # TODO: What is this? The action associated with this log entry?
-    act = db.Column(db.String)
-    # The ID of the question which produced this entry.
-    div_id = db.Column(db.String)
-    # The Courses row this row refers to.
-    course_id = db.Column(db.String, db.ForeignKey('courses.id'))
+    act = db.Column(db.String(512))
+    # _`div_id`: the ID of the question which produced this entry.
+    div_id = db.Column(db.String(512))
+    # _`course_id`: the Courses ``course_name`` **NOT** the ``id`` this row refers to. TODO: Use the ``id`` instead!
+    course_id = db.Column(db.String(512), db.ForeignKey('courses.course_name'))
 
     # Define a default query: the username if provided a string. Otherwise, automatically fall back to the id.
     @classmethod
@@ -109,6 +115,7 @@ class TimedExam(db.Model, IdMixin):
     div_id = db.Column(db.String(512))
     sid = db.Column(db.String(512))
     course_name = db.Column(db.String(512))
+
     correct = db.Column(db.Integer)
     incorrect = db.Column(db.Integer)
     skipped = db.Column(db.Integer)
@@ -154,16 +161,26 @@ class AnswerQueryMixin(IdMixin):
 
 
 class MchoiceAnswers(db.Model, AnswerQueryMixin):
-    pass
-"""
-db.define_table('mchoice_answers',
-    Field('timestamp','datetime'),
-    Field('div_id','string'),
-    Field('sid','string'),
-    Field('course_name','string'),
-    Field('answer','string', length=50),
-    Field('correct','boolean'),
-"""
+    # See timestamp_.
+    timestamp = db.Column(db.DateTime)
+    # See div_id_.
+    div_id = db.Column(db.String(512))
+    # See sid_.
+    sid = db.Column(db.String(512))
+    # See course_name_.
+    course_name = db.Column(db.String(512), db.ForeignKey('courses.course_name'))
+    # The answer to this multiple choice question. TODO: What is the format?
+    answer = db.Column(db.String(50))
+    # True if this answer is correct.
+    correct = db.Column(Web2PyBoolean)
+
+    @classmethod
+    def default_query(cls, key):
+        if isinstance(key, tuple):
+            return key == cls.correct
+        else:
+            return super().default_query(key)
+
 
 # Flask-User customization
 # ========================

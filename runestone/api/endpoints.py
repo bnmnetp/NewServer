@@ -19,7 +19,7 @@ from flask_user import current_user, is_authenticated
 
 # Local imports
 # -------------
-from ..model import db, Useinfo, TimedExam
+from ..model import db, Useinfo, TimedExam, MchoiceAnswers, Courses
 
 # Blueprint
 # =========
@@ -62,6 +62,15 @@ api = Blueprint('api', __name__, url_prefix='/api')
 #       skipped
 #           The number of skipped problems.
 #
+#   mChoice
+#       A multiple-choice answer. Additional arguments:
+#
+#       answer
+#           The answer for the question, as a string. TODO: format?
+#
+#       correct
+#           True if this answer is correct.
+#
 # TODO: Check these changes from existing code:
 #
 # - Old code didn't do anything if event='timedExam' but act isn't 'reset' or 'finish'. New code returns Log=False in this case.
@@ -95,7 +104,12 @@ def log_book_event():
     div_id = request.args.get('div_id')
     event = request.args.get('event')
     course = request.args.get('course')
+
     ts = datetime.now()
+
+    # TODO: Validate them. How to check div_id?
+    if Courses[course].q.count() == 0:
+        return jsonify(log=False, is_authenticated=is_authenticated(), error='Unknown course {}.'.format(course))
 
     try:
         db.session.add(Useinfo(sid=sid, act=act[0:512], div_id=div_id, event=event, timestamp=ts, course_id=course))
@@ -104,6 +118,8 @@ def log_book_event():
         current_app.logger.debug('failed to insert log record for {} in {} : {} {} {}'.format(sid, course, div_id, event, act))
 
     if is_authenticated():
+        answer = request.args.get('answer')
+        correct = request.args.get('correct')
         if event == 'timedExam':
             if act not in ('finish', 'reset'):
                 # Return log=False on an invalid ``act``.
@@ -133,9 +149,21 @@ def log_book_event():
                 current_app.logger.debug('correct {} incorrect {} skipped {} time {}'.format(correct, incorrect, skipped, time_taken))
                 current_app.logger.debug('Error: {}'.format(e.message))
 
-        ##elif event == 'mChoice':
+        elif event == 'mChoice':
             # Has the user already submitted a correct answer for this question?
-            ##if MchoiceAnswers[
+            if MchoiceAnswers[sid, div_id, course][True].q.count() == 0:
+                # No, so insert this answer.
+                db.session.add(MchoiceAnswers(
+                    sid=sid,
+                    timestamp=ts,
+                    div_id=div_id,
+                    answer=answer,
+                    correct=correct,
+                    course_name=course
+                ))
+
+        else:
+            return jsonify(log=False, is_authenticated=is_authenticated(), error='Unknown event {}.'.format(event))
 
     # See `jsonify <http://flask.pocoo.org/docs/0.12/api/#flask.json.jsonify>`_.
     return jsonify(log=True, is_authenticated=is_authenticated())

@@ -90,7 +90,14 @@ class TestRunestoneApi(BaseTest):
     # Check the consistency of values put in Useinfo.
     def test_1(self):
         with self.login_context:
-            self.get_valid_json(ap(self.hsblog, act=1, div_id=2, event=3, course=4, time=5), dict(
+            self.get_valid_json(ap(
+                self.hsblog,
+                act=1,
+                div_id=2,
+                event='mChoice',
+                course='test_child_course1',
+                time=5
+            ), dict(
                 log=True,
                 is_authenticated=True,
             ))
@@ -102,14 +109,19 @@ class TestRunestoneApi(BaseTest):
                 sid=self.username,
                 act='1',
                 div_id='2',
-                event='3',
-                course_id='4',
+                event='mChoice',
+                course_id='test_child_course1',
             )]
 
     # Check that unauthenticed access produces a consistent sid.
     def test_2(self):
         def go(is_auth=False):
-            self.get_valid_json(ap(self.hsblog, act='xxx'), dict(
+            self.get_valid_json(ap(
+                self.hsblog,
+                act='xxx',
+                course='test_child_course1',
+                event='mChoice',
+            ), dict(
                 log=True,
                 is_authenticated=is_auth,
             ))
@@ -124,6 +136,30 @@ class TestRunestoneApi(BaseTest):
             go(True)
         assert Useinfo[self.username].q.count() == 3
 
+    # Check that invalid parameters return an error.
+    def test_2_1(self):
+        self.get_valid_json(ap(
+            self.hsblog,
+            act='xxx',
+        ), dict(
+            log=False,
+            is_authenticated=False,
+            error='Unknown course None.',
+        ))
+
+        with self.login_context:
+            self.get_valid_json(ap(
+                self.hsblog,
+                act='xxx',
+                course='test_child_course1',
+            ), dict(
+                log=False,
+                is_authenticated=True,
+                error='Unknown event None.',
+            ))
+
+        # TODO: Test invalid div_id. Test strings that are too long for the database.
+
     # Check timed exam entries.
     def test_3(self):
         def go(act, log, auth=True):
@@ -132,7 +168,7 @@ class TestRunestoneApi(BaseTest):
                     self.hsblog,
                     act=act,
                     event='timedExam',
-                    course='test',
+                    course='test_child_course1',
                     correct=1,
                     incorrect=2,
                     skipped=3,
@@ -159,7 +195,7 @@ class TestRunestoneApi(BaseTest):
         results = result_remove(TimedExam.query, 'id', 'timestamp')
         common_items = dict(
             sid=self.username,
-            course_name='test',
+            course_name='test_child_course1',
             correct=1,
             incorrect=2,
             skipped=3,
