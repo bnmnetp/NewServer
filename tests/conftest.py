@@ -19,7 +19,7 @@ import pytest
 # Local imports
 # -------------
 from runestone import db
-from runestone.model import AuthUser, Courses
+from runestone.model import AuthUser, Courses, Questions
 
 # Data
 # ----
@@ -40,7 +40,10 @@ def make_user(app, username, password):
 
 # Creates some fake data which the tests use.
 def create_test_data(app):
+    # A test user.
     make_user(app, 'brad@test.user', 'grouplens')
+
+    # Test courses.
     test_base_course = Courses(
         course_name='test_base_course',
         python3=True,
@@ -59,6 +62,15 @@ def create_test_data(app):
         login_required=False,
     )
     db.session.add(test_base_course)
+
+    # A test question.
+    db.session.add(Questions(
+        base_course=test_base_course.course_name,
+        name='test_div_id',
+        chapter='1',
+        subchapter='2',
+    ))
+
     db.session.commit()
 
 # Fixtures

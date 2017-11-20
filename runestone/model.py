@@ -71,7 +71,7 @@ class Courses(db.Model, IdMixin):
     # _`course_name`: The name of this course.
     course_name = db.Column(db.String(512), unique=True)
     term_start_date = db.Column(db.Date)
-    # TODO: Why not use base_course_id instead? The course from which this course was derived. TODO: If this is a base course, this field should be identical to the course_name_?
+    # TODO: Why not use base_course_id instead? _`base_course`: the course from which this course was derived. TODO: If this is a base course, this field should be identical to the course_name_?
     base_course = db.Column(db.String(512), db.ForeignKey('courses.course_name'))
     # TODO: This should go in a different table. Not all courses have a Python/Skuplt component.
     python3 = db.Column(Web2PyBoolean)
@@ -180,6 +180,30 @@ class MchoiceAnswers(db.Model, AnswerQueryMixin):
             return key == cls.correct
         else:
             return super().default_query(key)
+
+class Questions(db.Model, IdMixin):
+    # The base_course_ this question is in.
+    base_course = db.Column(db.String(512), nullable=False)
+    # The div_id_ for this question. TODO: Rename this!
+    name = db.Column(db.String(512), nullable=False)
+    # matches chapter_label, not name
+    chapter = db.Column(db.String(512))
+    # matches sub_chapter_label, not name
+    subchapter = db.Column(db.String(512))
+    author = db.Column(db.String(512))
+    difficulty = db.Column(db.Integer)
+    question = db.Column(db.Text)
+    timestamp = db.Column(db.DateTime),
+    question_type = db.Column(db.String(512))
+    is_private = db.Column(Web2PyBoolean)
+    htmlsrc = db.Column(db.Text)
+    autograde = db.Column(db.String(512))
+
+
+    @classmethod
+    def default_query(cls, key):
+        if isinstance(key, str):
+            return cls.name == key
 
 
 # Flask-User customization

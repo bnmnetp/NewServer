@@ -19,7 +19,7 @@ from flask_user import current_user, is_authenticated
 
 # Local imports
 # -------------
-from ..model import db, Useinfo, TimedExam, MchoiceAnswers, Courses
+from ..model import db, Useinfo, TimedExam, MchoiceAnswers, Courses, Questions
 
 # Blueprint
 # =========
@@ -78,7 +78,8 @@ api = Blueprint('api', __name__, url_prefix='/api')
 # - New code returns is_authenticated, prompting client-side JavaScript to ask for a login and signaling that the data provided **was not** saved in the event-specific table!
 @api.route('/hsblog')
 def log_book_event():
-    if is_authenticated():
+    is_auth = is_authenticated()
+    if is_auth:
         # ``current_user`` is a `proxy <https://flask-login.readthedocs.io/en/latest/#flask_login.current_user>`_ for the currently logged-in user. It returns ``None`` if no user is logged in.
         sid = current_user.username
         # If the user wasn't logged in, but is now, update all ``hsblog`` entries to their username.
@@ -100,16 +101,18 @@ def log_book_event():
     session['sid'] = sid
 
     # Get the request arguments.
-    act = request.args.get('act')
+    act = request.args.get('act', '')
     div_id = request.args.get('div_id')
     event = request.args.get('event')
     course = request.args.get('course')
 
     ts = datetime.now()
 
-    # TODO: Validate them. How to check div_id?
+    # Validate them. The event is validated inside ``if is_auth``.
     if Courses[course].q.count() == 0:
-        return jsonify(log=False, is_authenticated=is_authenticated(), error='Unknown course {}.'.format(course))
+        return jsonify(log=False, is_authenticated=is_auth, error='Unknown course {}.'.format(course))
+    if Questions[div_id].q.count() == 0:
+        return jsonify(log=False, is_authenticated=is_auth, error='Unknown div_id {}.'.format(div_id))
 
     try:
         db.session.add(Useinfo(sid=sid, act=act[0:512], div_id=div_id, event=event, timestamp=ts, course_id=course))
@@ -117,13 +120,13 @@ def log_book_event():
     except:
         current_app.logger.debug('failed to insert log record for {} in {} : {} {} {}'.format(sid, course, div_id, event, act))
 
-    if is_authenticated():
+    if is_auth:
         answer = request.args.get('answer')
         correct = request.args.get('correct')
         if event == 'timedExam':
             if act not in ('finish', 'reset'):
                 # Return log=False on an invalid ``act``.
-                return jsonify(log=False, is_authenticated=is_authenticated())
+                return jsonify(log=False, is_authenticated=is_auth)
 
             # Gather args.
             correct = int(request.args.get('correct'))
@@ -143,7 +146,6 @@ def log_book_event():
                     div_id=div_id,
                     reset=act == 'reset' or None,
                 ))
-                db.session.commit()
             except Exception as e:
                 current_app.logger.debug('failed to insert a timed exam record for {} in {} : {}'.format(sid, course, div_id))
                 current_app.logger.debug('correct {} incorrect {} skipped {} time {}'.format(correct, incorrect, skipped, time_taken))
@@ -163,7 +165,9 @@ def log_book_event():
                 ))
 
         else:
-            return jsonify(log=False, is_authenticated=is_authenticated(), error='Unknown event {}.'.format(event))
+            return jsonify(log=False, is_authenticated=is_auth, error='Unknown event {}.'.format(event))
+
+        db.session.commit()
 
     # See `jsonify <http://flask.pocoo.org/docs/0.12/api/#flask.json.jsonify>`_.
-    return jsonify(log=True, is_authenticated=is_authenticated())
+    return jsonify(log=True, is_authenticated=is_auth)

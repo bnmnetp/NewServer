@@ -26,6 +26,7 @@ from runestone.book_server.server import book_server
 from runestone.api.endpoints import api
 from runestone.model import db, Courses, Useinfo, TimedExam
 
+
 # Utilities
 # =========
 # The common path prefix for testing the server: sp (for server path).
@@ -80,6 +81,7 @@ class TestRunestoneServer(BaseTest):
                 self.get_valid(sp('test_child_course1/_images/foo.png'))
                 assert mock_send_from_directory.call_args[0][1] == 'test_base_course/_images/foo.png'
 
+
 # API tests
 # =========
 class TestRunestoneApi(BaseTest):
@@ -93,7 +95,7 @@ class TestRunestoneApi(BaseTest):
             self.get_valid_json(ap(
                 self.hsblog,
                 act=1,
-                div_id=2,
+                div_id='test_div_id',
                 event='mChoice',
                 course='test_child_course1',
                 time=5
@@ -108,7 +110,7 @@ class TestRunestoneApi(BaseTest):
             assert results == [dict(
                 sid=self.username,
                 act='1',
-                div_id='2',
+                div_id='test_div_id',
                 event='mChoice',
                 course_id='test_child_course1',
             )]
@@ -120,6 +122,7 @@ class TestRunestoneApi(BaseTest):
                 self.hsblog,
                 act='xxx',
                 course='test_child_course1',
+                div_id='test_div_id',
                 event='mChoice',
             ), dict(
                 log=True,
@@ -150,6 +153,7 @@ class TestRunestoneApi(BaseTest):
         with self.login_context:
             self.get_valid_json(ap(
                 self.hsblog,
+                div_id='test_div_id',
                 act='xxx',
                 course='test_child_course1',
             ), dict(
@@ -158,7 +162,17 @@ class TestRunestoneApi(BaseTest):
                 error='Unknown event None.',
             ))
 
-        # TODO: Test invalid div_id. Test strings that are too long for the database.
+            self.get_valid_json(ap(
+                self.hsblog,
+                act='xxx',
+                course='test_child_course1',
+            ), dict(
+                log=False,
+                is_authenticated=True,
+                error='Unknown div_id None.',
+            ))
+
+        # TODO: Test strings that are too long for the database.
 
     # Check timed exam entries.
     def test_3(self):
@@ -166,6 +180,7 @@ class TestRunestoneApi(BaseTest):
             self.get_valid_json(
                 ap(
                     self.hsblog,
+                    div_id='test_div_id',
                     act=act,
                     event='timedExam',
                     course='test_child_course1',
@@ -173,7 +188,6 @@ class TestRunestoneApi(BaseTest):
                     incorrect=2,
                     skipped=3,
                     time=4,
-                    div_id='test_div',
                 ), dict(
                     log=log,
                     is_authenticated=auth,
@@ -200,7 +214,7 @@ class TestRunestoneApi(BaseTest):
             incorrect=2,
             skipped=3,
             time_taken=4,
-            div_id='test_div',
+            div_id='test_div_id',
         )
         assert results == [
             dict(
