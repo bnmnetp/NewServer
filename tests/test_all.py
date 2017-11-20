@@ -24,7 +24,7 @@ from datetime import datetime, timedelta
 from base_test import BaseTest, app, LoginContext, url_joiner, result_remove
 from runestone.book_server.server import book_server
 from runestone.api.endpoints import api
-from runestone.model import db, Courses, UseInfo, TimedExam
+from runestone.model import db, Courses, Useinfo, TimedExam
 
 # Utilities
 # =========
@@ -87,7 +87,7 @@ class TestRunestoneApi(BaseTest):
 # ------
     hsblog = 'hsblog'
 
-    # Check the consistency of values put in UseInfo.
+    # Check the consistency of values put in Useinfo.
     def test_1(self):
         with self.login_context:
             self.get_valid_json(ap(self.hsblog, act=1, div_id=2, event=3, course=4, time=5), dict(
@@ -95,9 +95,9 @@ class TestRunestoneApi(BaseTest):
                 is_authenticated=True,
             ))
             # Check the timestamp.
-            assert (UseInfo[self.username].timestamp.q.scalar() - datetime.now()) < timedelta(seconds=2)
+            assert (Useinfo[self.username].timestamp.q.scalar() - datetime.now()) < timedelta(seconds=2)
             # Check selected columns of the database record. (Omit the id and timestamp).
-            results = result_remove(UseInfo.query, 'id', 'timestamp')
+            results = result_remove(Useinfo.query, 'id', 'timestamp')
             assert results == [dict(
                 sid=self.username,
                 act='1',
@@ -115,14 +115,14 @@ class TestRunestoneApi(BaseTest):
             ))
         go()
         go()
-        r = db.session.UseInfo.sid.q.all()
+        r = db.session.Useinfo.sid.q.all()
         assert len(r) == 2
         assert r[0] == r[1]
 
         # If this user logs in, then make sure the sid is updated. There should now to be 3 log entries, all with sid=username.
         with self.login_context:
             go(True)
-        assert UseInfo[self.username].q.count() == 3
+        assert Useinfo[self.username].q.count() == 3
 
     # Check timed exam entries.
     def test_3(self):

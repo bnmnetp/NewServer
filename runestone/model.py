@@ -55,12 +55,19 @@ class Web2PyBoolean(types.TypeDecorator):
 
 # Models
 # ======
-class Courses(db.Model):
-    __tablename__ = 'courses'
+# TODO: Document the meaning of every field. Document the relationships.
+#
+# Regex to convert web2py to SQLAlchemy - Field\('(\w+)',\s*'(\w+)'\), --> $1 = db.Column(db.$2).
+
+class IdMixin:
     id = db.Column(db.Integer, primary_key=True)
+
+class Courses(db.Model, IdMixin):
     course_name = db.Column(db.String, unique=True)
     term_start_date = db.Column(db.Date)
+    # TODO: Why not use base_course_id instead?
     base_course = db.Column(db.String, db.ForeignKey('courses.course_name'))
+    # TODO: This should go in a different table. Not all courses have a Python/Skuplt component.
     python3 = db.Column(Web2PyBoolean)
     login_required = db.Column(Web2PyBoolean)
 
@@ -74,16 +81,20 @@ class Courses(db.Model):
             return cls.course_name == key
 
 
-# Regex to convert web2py to SQLAlchemy - Field\('(\w+)',\s*'(\w+)'\), --> $1 = db.Column(db.$2)
-class UseInfo(db.Model):
-    __tablename__ = 'useinfo'
-    id = db.Column(db.Integer, primary_key=True)
+# User info logged by the `hsblog endpoint`. See there for more info.
+class Useinfo(db.Model, IdMixin):
+    # When this entry was recorded by this webapp.
     timestamp = db.Column(db.DateTime)
+    # TODO: The student id? (user) which produced this row.
     sid = db.Column(db.String)
+    # The type of question (timed exam, fill in the blank, etc.).
     event = db.Column(db.String)
+    # TODO: What is this? The action associated with this log entry?
     act = db.Column(db.String)
+    # The ID of the question which produced this entry.
     div_id = db.Column(db.String)
-    course_id = db.Column(db.String)
+    # The Courses row this row refers to.
+    course_id = db.Column(db.String, db.ForeignKey('courses.id'))
 
     # Define a default query: the username if provided a string. Otherwise, automatically fall back to the id.
     @classmethod
@@ -92,9 +103,8 @@ class UseInfo(db.Model):
             return cls.sid == key
 
 
-class TimedExam(db.Model):
-    __tablename__ = 'timed_exam'
-    id = db.Column(db.Integer, primary_key=True)
+class TimedExam(db.Model, IdMixin):
+    # TODO: these entries duplicate Useinfo.timestamp. Why not just have a timestamp_id field?
     timestamp = db.Column(db.DateTime)
     div_id = db.Column(db.String(512))
     sid = db.Column(db.String(512))
@@ -112,9 +122,7 @@ class TimedExam(db.Model):
             return cls.sid == key
 
 
-class Auth_User(db.Model, UserMixin):
-    __tablename__ = 'auth_user'
-    id = db.Column(db.Integer, primary_key=True)
+class AuthUser(db.Model, UserMixin, IdMixin):
     username = db.Column(db.String(512), nullable=False, unique=True)
     first_name = db.Column(db.String(512))
     last_name = db.Column(db.String(512))
@@ -135,6 +143,28 @@ class Auth_User(db.Model, UserMixin):
         if isinstance(key, str):
             return cls.username == key
 
+
+# Many of the tables containing answers are always accessed by sid, div_id and course_name. Provide this as a default query.
+class AnswerQueryMixin(IdMixin):
+    @classmethod
+    def default_query(cls, key):
+        if isinstance(key, tuple):
+            sid, div_id, course_name = key
+            return (cls.sid == sid) and (cls.div_id == div_id) and (course_name == course_name)
+
+
+class MchoiceAnswers(db.Model, AnswerQueryMixin):
+    pass
+"""
+db.define_table('mchoice_answers',
+    Field('timestamp','datetime'),
+    Field('div_id','string'),
+    Field('sid','string'),
+    Field('course_name','string'),
+    Field('answer','string', length=50),
+    Field('correct','boolean'),
+"""
+
 # Flask-User customization
 # ========================
 # This can't be placed in `extensions.py`, because it needs the ``User`` model to be defined.
@@ -153,5 +183,5 @@ class UserManagerWeb2Py(UserManager):
     def verify_password(self, password, user):
         return self.hash_password(password) == self.get_password(user)
 
-db_adapter = SQLAlchemyAdapter(db, Auth_User)
+db_adapter = SQLAlchemyAdapter(db, AuthUser)
 user_manager = UserManagerWeb2Py(db_adapter)

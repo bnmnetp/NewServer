@@ -18,7 +18,7 @@ import os
 # Local imports
 # -------------
 from runestone import create_app, db
-from runestone.model import Auth_User
+from runestone.model import AuthUser
 
 # Create application
 # ==================
@@ -27,9 +27,9 @@ app = create_app(os.getenv('FLASK_CONFIG') or 'development')
 
 # TODO: This is duplicated in `tests/conftest.py`. Factor it out.
 def make_user(app, username, password):
-    u = Auth_User[username].q
+    u = AuthUser[username].q
     if not u.count():
-        user = Auth_User(
+        user = AuthUser(
             username=username,
             password=app.user_manager.hash_password(password),
             active=True,

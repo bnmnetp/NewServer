@@ -19,17 +19,18 @@ from flask_user import current_user, is_authenticated
 
 # Local imports
 # -------------
-from ..model import db, UseInfo, TimedExam
+from ..model import db, Useinfo, TimedExam
 
 # Blueprint
 # =========
 # Define the API's blueprint.
 api = Blueprint('api', __name__, url_prefix='/api')
 
-
+# .. _hsblog endpoint:
+#
 # hsblog endpoint
 # ===============
-# Log data to UseInfo and to the appropriate table. TODO: Arguments:
+# Log data to Useinfo and to the appropriate table. TODO: Arguments:
 #
 # act
 #   The action associated with this event. TODO: what exactly is this?
@@ -74,7 +75,7 @@ def log_book_event():
         # If the user wasn't logged in, but is now, update all ``hsblog`` entries to their username.
         if ('sid' in session) and (session['sid'] != sid):
             # Yes, so update all ``sid`` entries.
-            for _ in UseInfo[sid]:
+            for _ in Useinfo[sid]:
                 _.sid = sid
     else:
         # Create a uuid for a user that's not logged in. See `request.cookies <http://flask.pocoo.org/docs/0.12/api/#flask.Request.cookies>`_.
@@ -97,7 +98,7 @@ def log_book_event():
     ts = datetime.now()
 
     try:
-        db.session.add(UseInfo(sid=sid, act=act[0:512], div_id=div_id, event=event, timestamp=ts, course_id=course))
+        db.session.add(Useinfo(sid=sid, act=act[0:512], div_id=div_id, event=event, timestamp=ts, course_id=course))
         db.session.commit()
     except:
         current_app.logger.debug('failed to insert log record for {} in {} : {} {} {}'.format(sid, course, div_id, event, act))
@@ -131,6 +132,10 @@ def log_book_event():
                 current_app.logger.debug('failed to insert a timed exam record for {} in {} : {}'.format(sid, course, div_id))
                 current_app.logger.debug('correct {} incorrect {} skipped {} time {}'.format(correct, incorrect, skipped, time_taken))
                 current_app.logger.debug('Error: {}'.format(e.message))
+
+        ##elif event == 'mChoice':
+            # Has the user already submitted a correct answer for this question?
+            ##if MchoiceAnswers[
 
     # See `jsonify <http://flask.pocoo.org/docs/0.12/api/#flask.json.jsonify>`_.
     return jsonify(log=True, is_authenticated=is_authenticated())

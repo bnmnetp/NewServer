@@ -19,15 +19,15 @@ import pytest
 # Local imports
 # -------------
 from runestone import db
-from runestone.model import Auth_User, Courses
+from runestone.model import AuthUser, Courses
 
 # Data
 # ----
 # Create a user if they don't exist, or return the existing user.
 def make_user(app, username, password):
-    u = Auth_User[username].q
+    u = AuthUser[username].q
     if not u.count():
-        user = Auth_User(
+        user = AuthUser(
             username=username,
             password=app.user_manager.hash_password(password),
             active=True,
