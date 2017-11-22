@@ -26,6 +26,11 @@ from ..model import db, Useinfo, TimedExam, MchoiceAnswers, Courses, Questions
 # Define the API's blueprint.
 api = Blueprint('api', __name__, url_prefix='/api')
 
+# Return the length of a SQLAlchemy column.
+def sql_len(col):
+    # Taken from https://stackoverflow.com/a/1778993.
+    return col.property.columns[0].type.length
+
 # .. _hsblog endpoint:
 #
 # hsblog endpoint
@@ -102,23 +107,31 @@ def log_book_event():
 
     # Get the request arguments.
     act = request.args.get('act', '')
-    div_id = request.args.get('div_id')
-    event = request.args.get('event')
-    course = request.args.get('course')
+    div_id = request.args.get('div_id', '')
+    event = request.args.get('event', '')
+    course = request.args.get('course', '')
 
     ts = datetime.now()
 
     # Validate them. The event is validated inside ``if is_auth``.
+    return_kwargs = dict(log=False, is_authenticated=is_auth)
     if Courses[course].q.count() == 0:
-        return jsonify(log=False, is_authenticated=is_auth, error='Unknown course {}.'.format(course))
+        return jsonify(error='Unknown course {}.'.format(course), **return_kwargs)
     if Questions[div_id].q.count() == 0:
-        return jsonify(log=False, is_authenticated=is_auth, error='Unknown div_id {}.'.format(div_id))
+        return jsonify(error='Unknown div_id {}.'.format(div_id), **return_kwargs)
+    # Check string sizes for parameters not validated yet.
+    if len(event) > sql_len(Useinfo.act):
+        return jsonify(error='Event length {} too large.'.format(len(event)), **return_kwargs)
+    if len(act) > sql_len(Useinfo.act):
+        return jsonify(error='Act length {} too large.'.format(len(act)), **return_kwargs)
 
     try:
-        db.session.add(Useinfo(sid=sid, act=act[0:512], div_id=div_id, event=event, timestamp=ts, course_id=course))
+        db.session.add(Useinfo(sid=sid, act=act, div_id=div_id, event=event, timestamp=ts, course_id=course))
         db.session.commit()
+        log = True
     except:
         current_app.logger.debug('failed to insert log record for {} in {} : {} {} {}'.format(sid, course, div_id, event, act))
+        log = False
 
     if is_auth:
         answer = request.args.get('answer')
@@ -170,4 +183,4 @@ def log_book_event():
         db.session.commit()
 
     # See `jsonify <http://flask.pocoo.org/docs/0.12/api/#flask.json.jsonify>`_.
-    return jsonify(log=True, is_authenticated=is_auth)
+    return jsonify(log=log, is_authenticated=is_auth)

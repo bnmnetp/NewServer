@@ -148,7 +148,7 @@ class TestRunestoneApi(BaseTest):
         ), dict(
             log=False,
             is_authenticated=False,
-            error='Unknown course None.',
+            error='Unknown course .',
         ))
 
         # Undefined event.
@@ -161,7 +161,7 @@ class TestRunestoneApi(BaseTest):
             ), dict(
                 log=False,
                 is_authenticated=True,
-                error='Unknown event None.',
+                error='Unknown event .',
             ))
 
             self.get_valid_json(ap(
@@ -171,11 +171,10 @@ class TestRunestoneApi(BaseTest):
             ), dict(
                 log=False,
                 is_authenticated=True,
-                error='Unknown div_id None.',
+                error='Unknown div_id .',
             ))
 
         # Strings that are too long for a column.
-        """
         self.get_valid_json(ap(
             self.hsblog,
             event='x'*600,
@@ -184,12 +183,19 @@ class TestRunestoneApi(BaseTest):
         ), dict(
             log=False,
             is_authenticated=False,
-            error='event is too long.',
+            error='Event length 600 too large.',
         ))
-        # TODO: Test strings that are too long for the database.
-        print(Useinfo.event.property.columns[0].type.length)
-        assert False
-        """
+        self.get_valid_json(ap(
+            self.hsblog,
+            event='xxx',
+            act='x'*600,
+            course='test_child_course1',
+            div_id='test_div_id',
+        ), dict(
+            log=False,
+            is_authenticated=False,
+            error='Act length 600 too large.',
+        ))
 
     # Check timed exam entries.
     def test_3(self):

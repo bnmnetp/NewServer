@@ -96,8 +96,8 @@ def test_client(request):
     create_test_data(app)
 
     def teardown():
-        # Without a commit or rollback, PostgreSQL will `hang <https://stackoverflow.com/questions/13882407/sqlalchemy-blocked-on-dropping-tables>`_.
-        db.session.commit()
+        # Without a commit or rollback, PostgreSQL will `hang <https://stackoverflow.com/questions/13882407/sqlalchemy-blocked-on-dropping-tables>`_. Using a rollback cleans up if a transaction was rejected by the backend database.
+        db.session.rollback()
         db.drop_all()
         ctx.pop()
     request.addfinalizer(teardown)
