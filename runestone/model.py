@@ -176,7 +176,7 @@ class MchoiceAnswers(db.Model, AnswerQueryMixin):
 
     @classmethod
     def default_query(cls, key):
-        if isinstance(key, tuple):
+        if isinstance(key, bool):
             return key == cls.correct
         else:
             return super().default_query(key)

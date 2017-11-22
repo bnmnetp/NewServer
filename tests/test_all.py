@@ -141,6 +141,7 @@ class TestRunestoneApi(BaseTest):
 
     # Check that invalid parameters return an error.
     def test_2_1(self):
+        # Undefined course.
         self.get_valid_json(ap(
             self.hsblog,
             act='xxx',
@@ -150,6 +151,7 @@ class TestRunestoneApi(BaseTest):
             error='Unknown course None.',
         ))
 
+        # Undefined event.
         with self.login_context:
             self.get_valid_json(ap(
                 self.hsblog,
@@ -172,7 +174,22 @@ class TestRunestoneApi(BaseTest):
                 error='Unknown div_id None.',
             ))
 
+        # Strings that are too long for a column.
+        """
+        self.get_valid_json(ap(
+            self.hsblog,
+            event='x'*600,
+            course='test_child_course1',
+            div_id='test_div_id',
+        ), dict(
+            log=False,
+            is_authenticated=False,
+            error='event is too long.',
+        ))
         # TODO: Test strings that are too long for the database.
+        print(Useinfo.event.property.columns[0].type.length)
+        assert False
+        """
 
     # Check timed exam entries.
     def test_3(self):

@@ -21,6 +21,7 @@ import pytest
 from runestone import db
 from runestone.model import AuthUser, Courses, Questions
 
+
 # Data
 # ----
 # Create a user if they don't exist, or return the existing user.
@@ -37,6 +38,7 @@ def make_user(app, username, password):
     else:
         user = u.one()
     return user
+
 
 # Creates some fake data which the tests use.
 def create_test_data(app):
@@ -73,22 +75,14 @@ def create_test_data(app):
 
     db.session.commit()
 
+
 # Fixtures
 # ========
-# Set up the database for the test session. Do this just once for all tests, rather than every test (module scope).
-@pytest.fixture(scope='module')
-def test_db(request):
-    app = request.module.app
-    # _`test_client`: the `test client <http://flask.pocoo.org/docs/0.11/api/#flask.Flask.test_client>`_ to request pages from.
-    test_client = app.test_client()
-    with app.app_context():
-        db.create_all()
-
-    return test_client
-
-# Define `per-function setup and teardown <http://doc.pytest.org/en/latest/fixture.html#fixture-finalization-executing-teardown-code>`_ which places test data in an already existing database, then removes all data from the database when the test finishes.
+# Define `per-function setup and teardown <http://doc.pytest.org/en/latest/fixture.html#fixture-finalization-executing-teardown-code>`_ which places test data in an empty database, then removes all data from the database when the test finishes.
+#
+# Note: http://docs.sqlalchemy.org/en/latest/orm/session_transaction.html#joining-a-session-into-an-external-transaction-such-as-for-test-suites describes another approach, which seems more complex, so I'm not using it.
 @pytest.fixture()
-def test_client(test_db, request):
+def test_client(request):
     # Setup
     app = request.module.app
 
@@ -96,15 +90,17 @@ def test_client(test_db, request):
     ctx = app.app_context()
     ctx.push()
 
+    # Set up the database. In case something went wrong last test, drop everything first.
+    db.drop_all()
+    db.create_all()
     create_test_data(app)
 
     def teardown():
-        # Teardown. Adapted from http://stackoverflow.com/a/5003705. A simple db.drop_all() works, but doubles test time. This should remove all data, but keep the schema.
-        for table in reversed(db.metadata.sorted_tables):
-            db.session.execute(table.delete())
+        # Without a commit or rollback, PostgreSQL will `hang <https://stackoverflow.com/questions/13882407/sqlalchemy-blocked-on-dropping-tables>`_.
         db.session.commit()
-
+        db.drop_all()
         ctx.pop()
     request.addfinalizer(teardown)
 
-    return test_db
+    # A `test client <http://flask.pocoo.org/docs/0.11/api/#flask.Flask.test_client>`_ to request pages from.
+    return app.test_client()

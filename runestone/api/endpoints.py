@@ -39,7 +39,7 @@ api = Blueprint('api', __name__, url_prefix='/api')
 #   The ID of the div containing this problem.
 #
 # course
-#   The course containing this problem. TODO: I assume this is a string from Courses.course_name?
+#   The course containing this problem, which must mach an entry in Courses.course_name.
 #
 # event
 #   The type of event being logged. Valid values are:
@@ -75,7 +75,7 @@ api = Blueprint('api', __name__, url_prefix='/api')
 #
 # - Old code didn't do anything if event='timedExam' but act isn't 'reset' or 'finish'. New code returns Log=False in this case.
 # - Old code allows non-authenticated ``timedExam`` inserts to TimedExam. New code does not.
-# - New code returns is_authenticated, prompting client-side JavaScript to ask for a login and signaling that the data provided **was not** saved in the event-specific table!
+# - New code returns is_authenticated, prompting client-side JavaScript to ask for a login and signaling that the data provided **was not** saved in the event-specific table! It also validates parameters and returns an error if they're not valid.
 @api.route('/hsblog')
 def log_book_event():
     is_auth = is_authenticated()
@@ -85,7 +85,7 @@ def log_book_event():
         # If the user wasn't logged in, but is now, update all ``hsblog`` entries to their username.
         if ('sid' in session) and (session['sid'] != sid):
             # Yes, so update all ``sid`` entries.
-            for _ in Useinfo[sid]:
+            for _ in Useinfo[session['sid']]:
                 _.sid = sid
     else:
         # Create a uuid for a user that's not logged in. See `request.cookies <http://flask.pocoo.org/docs/0.12/api/#flask.Request.cookies>`_.

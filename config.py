@@ -49,8 +49,12 @@ class ProductionConfig(Config):
 class TestingConfig(Config):
     DEBUG = True
 
-    # In-memory sqlite DB
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    # Use a testing-only database.
+    #
+    # While an in-membory SQLite test database is handy, it doesn't behave like a PostgreSQL database. Don't test on it.
+    ##SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    # Instead, use a command like ``createdb --owner=<yournamehere> runestone_test`` (``"C:\Program Files\PostgreSQL\9.6\bin\createdb" --owner=<yournamehere> -U postgres runestone_test`` on Windows).
+    SQLALCHEMY_DATABASE_URI = 'postgresql://web2py_db_instance:verysilly@localhost/runestone_test'
     # Propagate exceptions (don't show 500 error page). See `testing <http://flask.pocoo.org/docs/0.12/api/#flask.Flask.testing>`_.
     TESTING = True
     # Disable CSRF token in Flask-Wtf.
