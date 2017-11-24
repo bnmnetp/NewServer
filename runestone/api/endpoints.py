@@ -26,10 +26,12 @@ from ..model import db, Useinfo, TimedExam, MchoiceAnswers, Courses, Questions
 # Define the API's blueprint.
 api = Blueprint('api', __name__, url_prefix='/api')
 
+
 # Return the length of a SQLAlchemy column.
 def sql_len(col):
     # Taken from https://stackoverflow.com/a/1778993.
     return col.property.columns[0].type.length
+
 
 # .. _hsblog endpoint:
 #
@@ -88,9 +90,10 @@ def log_book_event():
         # ``current_user`` is a `proxy <https://flask-login.readthedocs.io/en/latest/#flask_login.current_user>`_ for the currently logged-in user. It returns ``None`` if no user is logged in.
         sid = current_user.username
         # If the user wasn't logged in, but is now, update all ``hsblog`` entries to their username.
-        if ('sid' in session) and (session['sid'] != sid):
-            # Yes, so update all ``sid`` entries.
-            for _ in Useinfo[session['sid']]:
+        session_sid = session.get('sid')
+        if session_sid != sid:
+            # Yes, so update all ``session_sid`` entries.
+            for _ in Useinfo[session_sid]:
                 _.sid = sid
     else:
         # Create a uuid for a user that's not logged in. See `request.cookies <http://flask.pocoo.org/docs/0.12/api/#flask.Request.cookies>`_.
@@ -141,10 +144,10 @@ def log_book_event():
                 # Return log=False on an invalid ``act``.
                 return jsonify(log=False, is_authenticated=is_auth)
 
-            # Gather args.
-            correct = int(request.args.get('correct'))
-            incorrect = int(request.args.get('incorrect'))
-            skipped = int(request.args.get('skipped'))
+            # Gather args. Provide a default of 0, since no default produces None, which leads to an exception from executing ``int(None)``
+            correct = int(request.args.get('correct', 0))
+            incorrect = int(request.args.get('incorrect', 0))
+            skipped = int(request.args.get('skipped', 0))
             time_taken = int(request.args.get('time', 0))
 
             try:

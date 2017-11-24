@@ -224,12 +224,25 @@ class TestRunestoneApi(BaseTest):
             # Valid flavors
             go('reset', True)
             go('finish', True)
+            # Don't provide all the parameters.
+            self.get_valid_json(
+                ap(
+                    self.hsblog,
+                    div_id='test_div_id',
+                    act='reset',
+                    event='timedExam',
+                    course='test_child_course1',
+                ), dict(
+                    log=True,
+                    is_authenticated=True,
+                )
+            )
 
         # Check the timestamp.
         assert (TimedExam[self.username].timestamp.q.first()[0] - datetime.now()) < timedelta(seconds=2)
 
         # Check the results.
-        results = result_remove(TimedExam.query, 'id', 'timestamp')
+        results = result_remove(TimedExam.query.order_by(TimedExam.timestamp), 'id', 'timestamp')
         common_items = dict(
             sid=self.username,
             course_name='test_child_course1',
@@ -246,6 +259,15 @@ class TestRunestoneApi(BaseTest):
             ), dict(
                 reset=None,
                 **common_items,
+            ), dict(
+                reset=True,
+                sid=self.username,
+                course_name='test_child_course1',
+                correct=0,
+                incorrect=0,
+                skipped=0,
+                time_taken=0,
+                div_id='test_div_id',
             )
         ]
 

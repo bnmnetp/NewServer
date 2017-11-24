@@ -78,11 +78,21 @@ def create_test_data(app):
 
 # Fixtures
 # ========
-# Define `per-function setup and teardown <http://doc.pytest.org/en/latest/fixture.html#fixture-finalization-executing-teardown-code>`_ which places test data in an empty database, then removes all data from the database when the test finishes.
+# Set up the database for the test session. Do this just once for all tests, rather than every test (module scope). This significantly reduces test time.
+@pytest.fixture(scope='module')
+def test_db(request):
+    app = request.module.app
+    with app.app_context():
+        # Start with a (fairly clean) set of tables.
+        db.drop_all()
+        db.create_all()
+
+
+# Define `per-function setup # Define `per-function setup and teardown <http://doc.pytest.org/en/latest/fixture.html#fixture-finalization-executing-teardown-code>`_ which places test data in an empty database, then removes all data from the database when the test finishes.
 #
 # Note: http://docs.sqlalchemy.org/en/latest/orm/session_transaction.html#joining-a-session-into-an-external-transaction-such-as-for-test-suites describes another approach, which seems more complex, so I'm not using it.
 @pytest.fixture()
-def test_client(request):
+def test_client(request, test_db):
     # Setup
     app = request.module.app
 
@@ -91,14 +101,17 @@ def test_client(request):
     ctx.push()
 
     # Set up the database. In case something went wrong last test, drop everything first.
-    db.drop_all()
-    db.create_all()
     create_test_data(app)
 
     def teardown():
         # Without a commit or rollback, PostgreSQL will `hang <https://stackoverflow.com/questions/13882407/sqlalchemy-blocked-on-dropping-tables>`_. Using a rollback cleans up if a transaction was rejected by the backend database.
         db.session.rollback()
-        db.drop_all()
+
+        # Teardown. Adapted from http://stackoverflow.com/a/5003705. A simple db.drop_all() works, but doubles test time. This should remove all data, but keep the schema.
+        for table in reversed(db.metadata.sorted_tables):
+            db.session.execute(table.delete())
+        db.session.commit()
+
         ctx.pop()
     request.addfinalizer(teardown)
 

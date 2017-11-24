@@ -67,6 +67,7 @@ class Web2PyBoolean(types.TypeDecorator):
 class IdMixin:
     id = db.Column(db.Integer, primary_key=True)
 
+
 class Courses(db.Model, IdMixin):
     # _`course_name`: The name of this course.
     course_name = db.Column(db.String(512), unique=True)
@@ -151,7 +152,7 @@ class AuthUser(db.Model, UserMixin, IdMixin):
             return cls.username == key
 
 
-# Many of the tables containing answers are always accessed by sid, div_id and course_name. Provide this as a default query.
+# Many of the tables containing answers are always accessed by sid, div_id and course_name. Provide this as a default query. TODO: Obviously, this is poor database design -- there should be a single key, rather than using all three as a key. Refactor.
 class AnswerQueryMixin(IdMixin):
     @classmethod
     def default_query(cls, key):
@@ -181,6 +182,7 @@ class MchoiceAnswers(db.Model, AnswerQueryMixin):
         else:
             return super().default_query(key)
 
+
 class Questions(db.Model, IdMixin):
     # The base_course_ this question is in.
     base_course = db.Column(db.String(512), nullable=False)
@@ -198,7 +200,6 @@ class Questions(db.Model, IdMixin):
     is_private = db.Column(Web2PyBoolean)
     htmlsrc = db.Column(db.Text)
     autograde = db.Column(db.String(512))
-
 
     @classmethod
     def default_query(cls, key):
@@ -223,6 +224,7 @@ class UserManagerWeb2Py(UserManager):
 
     def verify_password(self, password, user):
         return self.hash_password(password) == self.get_password(user)
+
 
 db_adapter = SQLAlchemyAdapter(db, AuthUser)
 user_manager = UserManagerWeb2Py(db_adapter)
