@@ -98,7 +98,9 @@ class TestRunestoneApi(BaseTest):
                 div_id='test_div_id',
                 event='mChoice',
                 course='test_child_course1',
-                time=5
+                time=5,
+                answer='whatever',
+                correct='F',
             ), dict(
                 log=True,
                 is_authenticated=True,
@@ -124,6 +126,8 @@ class TestRunestoneApi(BaseTest):
                 course='test_child_course1',
                 div_id='test_div_id',
                 event='mChoice',
+                answer='yyy',
+                correct='T',
             ), dict(
                 log=True,
                 is_authenticated=is_auth,
@@ -141,6 +145,17 @@ class TestRunestoneApi(BaseTest):
 
     # Check that invalid parameters return an error.
     def test_2_1(self):
+        # Unknown course.
+        self.get_valid_json(ap(
+            self.hsblog,
+            act='xxx',
+            course='xxx',
+        ), dict(
+            log=False,
+            is_authenticated=False,
+            error='Unknown course xxx.',
+        ))
+
         # Undefined course.
         self.get_valid_json(ap(
             self.hsblog,
@@ -148,7 +163,7 @@ class TestRunestoneApi(BaseTest):
         ), dict(
             log=False,
             is_authenticated=False,
-            error='Unknown course .',
+            error='Missing argument course.',
         ))
 
         # Undefined event.
@@ -161,17 +176,18 @@ class TestRunestoneApi(BaseTest):
             ), dict(
                 log=False,
                 is_authenticated=True,
-                error='Unknown event .',
+                error='Missing argument event.',
             ))
 
             self.get_valid_json(ap(
                 self.hsblog,
                 act='xxx',
+                div_id='yyy',
                 course='test_child_course1',
             ), dict(
                 log=False,
                 is_authenticated=True,
-                error='Unknown div_id .',
+                error='Unknown div_id yyy.',
             ))
 
         # Strings that are too long for a column.
@@ -183,7 +199,7 @@ class TestRunestoneApi(BaseTest):
         ), dict(
             log=False,
             is_authenticated=False,
-            error='Event length 600 too large.',
+            error='Argument event length 600 exceeds the maximum length of 512.',
         ))
         self.get_valid_json(ap(
             self.hsblog,
@@ -194,7 +210,7 @@ class TestRunestoneApi(BaseTest):
         ), dict(
             log=False,
             is_authenticated=False,
-            error='Act length 600 too large.',
+            error='Argument act length 600 exceeds the maximum length of 512.',
         ))
 
     # Check timed exam entries.
@@ -233,8 +249,9 @@ class TestRunestoneApi(BaseTest):
                     event='timedExam',
                     course='test_child_course1',
                 ), dict(
-                    log=True,
+                    log=False,
                     is_authenticated=True,
+                    error='Missing argument correct.',
                 )
             )
 
@@ -259,15 +276,6 @@ class TestRunestoneApi(BaseTest):
             ), dict(
                 reset=None,
                 **common_items,
-            ), dict(
-                reset=True,
-                sid=self.username,
-                course_name='test_child_course1',
-                correct=0,
-                incorrect=0,
-                skipped=0,
-                time_taken=0,
-                div_id='test_div_id',
             )
         ]
 
