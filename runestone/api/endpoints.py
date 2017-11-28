@@ -11,6 +11,7 @@
 # ----------------
 import uuid
 from datetime import datetime
+from functools import wraps
 
 # Third-party imports
 # -------------------
@@ -93,8 +94,22 @@ def sql_validator(
         assert False
 
 
+# An Exception to indicate request validation failed.
 class RequestValidationFailure(Exception):
     pass
+
+
+# A decorator to make request validation handling a bit prettier. Provide it with a function to call if request validation fails. This function should take one parameter, the RequestValidationFailure instance raised.
+def request_validation_handler(on_error_func):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            try:
+                return f(*args, **kwargs)
+            except RequestValidationFailure as e:
+                return on_error_func(e)
+        return wrapper
+    return decorator
 
 
 # .. _hsblog endpoint:
@@ -149,81 +164,78 @@ class RequestValidationFailure(Exception):
 # - Old code has try/except blocks with logging. New code does not. Hopefully, better testing has fixed these failures.
 # - New code returns is_authenticated, prompting client-side JavaScript to ask for a login and signaling that the data provided **was not** saved in the event-specific table! It also validates parameters and returns an error if they're not valid.
 @api.route('/hsblog')
+@request_validation_handler( lambda e: jsonify(error=e.args[0], log=False, is_authenticated=is_authenticated()) )
 def log_book_event():
-    try:
-        is_auth = is_authenticated()
-        if is_auth:
-            # ``current_user`` is a `proxy <https://flask-login.readthedocs.io/en/latest/#flask_login.current_user>`_ for the currently logged-in user. It returns ``None`` if no user is logged in.
-            sid = current_user.username
-            # If the user wasn't logged in, but is now, update all ``hsblog`` entries to their username.
-            session_sid = session.get('sid')
-            if session_sid != sid:
-                # Yes, so update all ``session_sid`` entries.
-                for _ in Useinfo[session_sid]:
-                    _.sid = sid
+    is_auth = is_authenticated()
+    if is_auth:
+        # ``current_user`` is a `proxy <https://flask-login.readthedocs.io/en/latest/#flask_login.current_user>`_ for the currently logged-in user. It returns ``None`` if no user is logged in.
+        sid = current_user.username
+        # If the user wasn't logged in, but is now, update all ``hsblog`` entries to their username.
+        session_sid = session.get('sid')
+        if session_sid != sid:
+            # Yes, so update all ``session_sid`` entries.
+            for _ in Useinfo[session_sid]:
+                _.sid = sid
+    else:
+        # Create a uuid for a user that's not logged in. See `request.cookies <http://flask.pocoo.org/docs/0.12/api/#flask.Request.cookies>`_.
+        if 'sid' in session:
+            sid = session['sid']
         else:
-            # Create a uuid for a user that's not logged in. See `request.cookies <http://flask.pocoo.org/docs/0.12/api/#flask.Request.cookies>`_.
-            if 'sid' in session:
-                sid = session['sid']
-            else:
-                # See `request.remove_addr <http://werkzeug.pocoo.org/docs/0.12/wrappers/#werkzeug.wrappers.BaseRequest.remote_addr>`_.
-                sid = str(uuid.uuid1().int) + "@" + request.remote_addr
+            # See `request.remove_addr <http://werkzeug.pocoo.org/docs/0.12/wrappers/#werkzeug.wrappers.BaseRequest.remote_addr>`_.
+            sid = str(uuid.uuid1().int) + "@" + request.remote_addr
 
-        # We set our own session anyway to eliminate many of the extraneous anonymous
-        # log entries that come from auth timing out even but the user hasn't reloaded
-        # the page.
-        session['sid'] = sid
-        ts = datetime.now()
+    # We set our own session anyway to eliminate many of the extraneous anonymous
+    # log entries that come from auth timing out even but the user hasn't reloaded
+    # the page.
+    session['sid'] = sid
+    ts = datetime.now()
 
-        # Get and validate the request args. The event is validated inside ``if is_auth``.
-        course = generic_validator('course', lambda arg: Courses[arg].q.count(), 'Unknown course {1}.')
-        div_id = generic_validator('div_id', lambda arg: Questions[arg].q.count(), 'Unknown div_id {1}.')
-        # Check string sizes for parameters not validated yet.
-        event = sql_validator('event', Useinfo.act)
-        act = sql_validator('act', Useinfo.act)
+    # Get and validate the request args. The event is validated inside ``if is_auth``.
+    course = generic_validator('course', lambda arg: Courses[arg].q.count(), 'Unknown course {1}.')
+    div_id = generic_validator('div_id', lambda arg: Questions[arg].q.count(), 'Unknown div_id {1}.')
+    # Check string sizes for parameters not validated yet.
+    event = sql_validator('event', Useinfo.act)
+    act = sql_validator('act', Useinfo.act)
 
-        db.session.add(Useinfo(sid=sid, act=act, div_id=div_id, event=event, timestamp=ts, course_id=course))
-        db.session.commit()
+    db.session.add(Useinfo(sid=sid, act=act, div_id=div_id, event=event, timestamp=ts, course_id=course))
+    db.session.commit()
 
-        if is_auth:
+    if is_auth:
 
-            if event == 'timedExam':
-                if act not in ('finish', 'reset'):
-                    # Return log=False on an invalid ``act``.
-                    return jsonify(log=False, is_authenticated=is_auth)
+        if event == 'timedExam':
+            if act not in ('finish', 'reset'):
+                # Return log=False on an invalid ``act``.
+                return jsonify(log=False, is_authenticated=is_auth)
 
-                db.session.add(TimedExam(
+            db.session.add(TimedExam(
+                sid=sid,
+                course_name=course,
+                correct=sql_validator('correct', TimedExam.correct),
+                incorrect=sql_validator('incorrect', TimedExam.incorrect),
+                skipped=sql_validator('skipped', TimedExam.skipped),
+                time_taken=sql_validator('time', TimedExam.time_taken),
+                timestamp=ts,
+                div_id=div_id,
+                reset=act == 'reset' or None,
+            ))
+
+        elif event == 'mChoice':
+            # Has the user already submitted a correct answer for this question?
+            if MchoiceAnswers[sid, div_id, course][True].q.count() == 0:
+                # No, so insert this answer.
+                db.session.add(MchoiceAnswers(
                     sid=sid,
-                    course_name=course,
-                    correct=sql_validator('correct', TimedExam.correct),
-                    incorrect=sql_validator('incorrect', TimedExam.incorrect),
-                    skipped=sql_validator('skipped', TimedExam.skipped),
-                    time_taken=sql_validator('time', TimedExam.time_taken),
                     timestamp=ts,
                     div_id=div_id,
-                    reset=act == 'reset' or None,
+                    answer=sql_validator('answer', MchoiceAnswers.answer),
+                    correct=sql_validator('correct', MchoiceAnswers.correct),
+                    course_name=course
                 ))
 
-            elif event == 'mChoice':
-                # Has the user already submitted a correct answer for this question?
-                if MchoiceAnswers[sid, div_id, course][True].q.count() == 0:
-                    # No, so insert this answer.
-                    db.session.add(MchoiceAnswers(
-                        sid=sid,
-                        timestamp=ts,
-                        div_id=div_id,
-                        answer=sql_validator('answer', MchoiceAnswers.answer),
-                        correct=sql_validator('correct', MchoiceAnswers.correct),
-                        course_name=course
-                    ))
+        else:
+            return jsonify(log=False, is_authenticated=is_auth, error='Unknown event {}.'.format(event))
 
-            else:
-                return jsonify(log=False, is_authenticated=is_auth, error='Unknown event {}.'.format(event))
+        db.session.commit()
 
-            db.session.commit()
-
-        # See `jsonify <http://flask.pocoo.org/docs/0.12/api/#flask.json.jsonify>`_.
-        return jsonify(log=True, is_authenticated=is_auth)
-
-    except RequestValidationFailure as e:
-        return jsonify(error=e.args[0], log=False, is_authenticated=is_auth)
+    # See `jsonify <http://flask.pocoo.org/docs/0.12/api/#flask.json.jsonify>`_.
+    return jsonify(log=True, is_authenticated=is_auth)
