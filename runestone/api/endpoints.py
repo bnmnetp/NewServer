@@ -75,7 +75,7 @@ def sql_validator(
         bool_string = generic_validator(
             arg_name,
             lambda arg: arg in ('true', 'T', 'false', 'F', ''),
-            'Argument {} supplied an boolean value of {}.',
+            'Argument {} supplied an invalid boolean value of {}.',
             default
         )
         if bool_string == '':

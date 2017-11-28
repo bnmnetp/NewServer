@@ -16,15 +16,15 @@ from datetime import datetime, timedelta
 
 # Third-party imports
 # -------------------
-# None.
+import pytest
 
 # Local imports
 # -------------
 # The ``app`` import is required for the fixtures to work.
 from base_test import BaseTest, app, LoginContext, url_joiner, result_remove
 from runestone.book_server.server import book_server
-from runestone.api.endpoints import api
-from runestone.model import db, Courses, Useinfo, TimedExam
+from runestone.api.endpoints import api, generic_validator, sql_validator, RequestValidationFailure
+from runestone.model import db, Courses, Useinfo, TimedExam, IdMixin, Web2PyBoolean
 
 
 # Utilities
@@ -278,6 +278,92 @@ class TestRunestoneApi(BaseTest):
                 **common_items,
             )
         ]
+
+    # Check generic_validator.
+    def test_4(self):
+        # Create a `mock request_context <http://flask.pocoo.org/docs/0.12/testing/#other-testing-tricks>`_ with no arguments.
+        with app.test_request_context(ap(self.hsblog)):
+            with pytest.raises(RequestValidationFailure) as exc_info:
+                generic_validator('param1', None, '')
+            assert exc_info.value.args[0] == 'Missing argument param1.'
+
+            # Check default value.
+            assert generic_validator('param1', None, '', 1) == 1
+
+        # Check validation.
+        with app.test_request_context(ap(self.hsblog, param1='xxx')):
+            with pytest.raises(RequestValidationFailure) as exc_info:
+                # Return an error as a string.
+                def test_validator(arg):
+                    assert arg == 'xxx'
+                    return False
+                generic_validator('param1', test_validator, 'yyy')
+
+                # Raise an error using a formatting function.
+                def test_exception_func(arg):
+                    assert arg == 'xxx'
+                    return 'yyy'
+                generic_validator('param1', test_validator, test_exception_func)
+            assert exc_info.value.args[0] == 'yyy'
+
+    # Check SQL validator.
+    def test_5(self):
+        class ModelForTesting(db.Model, IdMixin):
+            test_string = db.Column(db.String(10))
+            test_bool = db.Column(Web2PyBoolean)
+            test_int = db.Column(db.Integer)
+
+        # Create generic test functions.
+        def go(test_str, column):
+            with app.test_request_context(ap(self.hsblog, param1=test_str)):
+                return sql_validator('param1', column)
+
+        def exception_go(test_str, column):
+            with app.test_request_context(ap(self.hsblog, param1=test_str)):
+                with pytest.raises(RequestValidationFailure) as exc_info:
+                    sql_validator('param1', column)
+                return exc_info.value.args[0]
+
+        # **Test with a String column**
+        with app.test_request_context(ap(self.hsblog)):
+            # Test missing argument.
+            with pytest.raises(RequestValidationFailure) as exc_info:
+                sql_validator('param1', ModelForTesting.test_string)
+            assert exc_info.value.args[0] == 'Missing argument param1.'
+
+            # Check default value.
+            assert sql_validator('param1', ModelForTesting.test_string, '1') == '1'
+
+        def go_str(test_str):
+            assert go(test_str, ModelForTesting.test_string) == test_str
+        # Test with the max length string and an empty string.
+        go_str('x'*10)
+        go_str('')
+
+        # Test with an over-length string.
+        assert exception_go('x'*11, ModelForTesting.test_string) == 'Argument param1 length 11 exceeds the maximum length of 10.'
+
+        # **Test with a Web2PyBoolean column**
+        #
+        # Assume missing/default args work (tested in String above).
+        def go_bool(bool_str):
+            return go(bool_str, ModelForTesting.test_bool)
+        assert go_bool('true') is True
+        assert go_bool('T') is True
+        assert go_bool('false') is False
+        assert go_bool('F') is False
+        assert go_bool('') is None
+        assert exception_go('xxx', ModelForTesting.test_bool) == 'Argument param1 supplied an invalid boolean value of xxx.'
+
+        # **Test with an Integer column***
+        #
+        # Assume missing/default args work (tested in String above).
+        def go_int(int_str):
+            return go(int_str, ModelForTesting.test_int)
+        assert go_int('-10') == -10
+        assert go_int('10') == 10
+        assert go_int('0') == 0
+        assert exception_go('xxx', ModelForTesting.test_int) == 'Unable to convert argument param1 to an integer.'
 
 
 # Web2PyBoolean tests
