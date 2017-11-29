@@ -21,10 +21,10 @@ import pytest
 # Local imports
 # -------------
 # The ``app`` import is required for the fixtures to work.
-from base_test import BaseTest, app, LoginContext, url_joiner, result_remove
+from base_test import BaseTest, app, LoginContext, url_joiner, result_remove_usual
 from runestone.book_server.server import book_server
 from runestone.api.endpoints import api, generic_validator, sql_validator, RequestValidationFailure
-from runestone.model import db, Courses, Useinfo, TimedExam, IdMixin, Web2PyBoolean
+from runestone.model import db, Courses, Useinfo, TimedExam, IdMixin, Web2PyBoolean, MchoiceAnswers
 
 
 # Utilities
@@ -88,6 +88,10 @@ class TestRunestoneApi(BaseTest):
 # hsblog
 # ------
     hsblog = 'hsblog'
+    common_params = dict(
+        div_id='test_div_id',
+        course='test_child_course1'
+    )
 
     # Check the consistency of values put in Useinfo.
     def test_1(self):
@@ -95,12 +99,11 @@ class TestRunestoneApi(BaseTest):
             self.get_valid_json(ap(
                 self.hsblog,
                 act=1,
-                div_id='test_div_id',
                 event='mChoice',
-                course='test_child_course1',
                 time=5,
                 answer='whatever',
                 correct='F',
+                **self.common_params
             ), dict(
                 log=True,
                 is_authenticated=True,
@@ -108,7 +111,7 @@ class TestRunestoneApi(BaseTest):
             # Check the timestamp.
             assert (Useinfo[self.username].timestamp.q.scalar() - datetime.now()) < timedelta(seconds=2)
             # Check selected columns of the database record. (Omit the id and timestamp).
-            results = result_remove(Useinfo.query, 'id', 'timestamp')
+            results = result_remove_usual(Useinfo)
             assert results == [dict(
                 sid=self.username,
                 act='1',
@@ -123,11 +126,10 @@ class TestRunestoneApi(BaseTest):
             self.get_valid_json(ap(
                 self.hsblog,
                 act='xxx',
-                course='test_child_course1',
-                div_id='test_div_id',
                 event='mChoice',
                 answer='yyy',
                 correct='T',
+                **self.common_params
             ), dict(
                 log=True,
                 is_authenticated=is_auth,
@@ -170,9 +172,8 @@ class TestRunestoneApi(BaseTest):
         with self.login_context:
             self.get_valid_json(ap(
                 self.hsblog,
-                div_id='test_div_id',
                 act='xxx',
-                course='test_child_course1',
+                **self.common_params
             ), dict(
                 log=False,
                 is_authenticated=True,
@@ -194,8 +195,7 @@ class TestRunestoneApi(BaseTest):
         self.get_valid_json(ap(
             self.hsblog,
             event='x'*600,
-            course='test_child_course1',
-            div_id='test_div_id',
+            **self.common_params
         ), dict(
             log=False,
             is_authenticated=False,
@@ -205,13 +205,19 @@ class TestRunestoneApi(BaseTest):
             self.hsblog,
             event='xxx',
             act='x'*600,
-            course='test_child_course1',
-            div_id='test_div_id',
+            **self.common_params
         ), dict(
             log=False,
             is_authenticated=False,
             error='Argument act length 600 exceeds the maximum length of 512.',
         ))
+
+    # Verify that the timestamp of the latest row is recent.
+    def check_timestamp(self,
+        # The model class to check. It must have a column named ``timestamp``.
+        model):
+
+        assert (model[model.sid == self.username].timestamp.q.first()[0] - datetime.now()) < timedelta(seconds=2)
 
     # Check timed exam entries.
     def test_3(self):
@@ -219,14 +225,13 @@ class TestRunestoneApi(BaseTest):
             self.get_valid_json(
                 ap(
                     self.hsblog,
-                    div_id='test_div_id',
                     act=act,
                     event='timedExam',
-                    course='test_child_course1',
                     correct=1,
                     incorrect=2,
                     skipped=3,
                     time=4,
+                    **self.common_params
                 ), dict(
                     log=log,
                     is_authenticated=auth,
@@ -244,10 +249,9 @@ class TestRunestoneApi(BaseTest):
             self.get_valid_json(
                 ap(
                     self.hsblog,
-                    div_id='test_div_id',
                     act='reset',
                     event='timedExam',
-                    course='test_child_course1',
+                    **self.common_params
                 ), dict(
                     log=False,
                     is_authenticated=True,
@@ -256,10 +260,10 @@ class TestRunestoneApi(BaseTest):
             )
 
         # Check the timestamp.
-        assert (TimedExam[self.username].timestamp.q.first()[0] - datetime.now()) < timedelta(seconds=2)
+        self.check_timestamp(TimedExam)
 
         # Check the results.
-        results = result_remove(TimedExam.query.order_by(TimedExam.timestamp), 'id', 'timestamp')
+        results = result_remove_usual(TimedExam)
         common_items = dict(
             sid=self.username,
             course_name='test_child_course1',
@@ -364,6 +368,55 @@ class TestRunestoneApi(BaseTest):
         assert go_int('10') == 10
         assert go_int('0') == 0
         assert exception_go('xxx', ModelForTesting.test_int) == 'Unable to convert argument param1 to an integer.'
+
+    # Test multiple choice questions.
+    def test_6(self):
+        def go(answer, correct, auth=True):
+            self.get_valid_json(
+                ap(
+                    self.hsblog,
+                    act='',
+                    event='mChoice',
+                    answer=answer,
+                    correct=correct,
+                    **self.common_params
+                ), dict(
+                    log=True,
+                    is_authenticated=auth,
+                )
+            )
+
+            return result_remove_usual(MchoiceAnswers)
+
+        wrong_answer = 'A, B'
+        # An unauthenicated submission won't save the answer.
+        assert go(wrong_answer, 'F', False) == []
+
+        # Submit an incorrect answer.
+        wrong_results = dict(
+            answer=wrong_answer,
+            correct=False,
+            **self.common_results
+        )
+        with self.login_context:
+            assert go(wrong_answer, 'F') == [wrong_results]
+        self.check_timestamp(MchoiceAnswers)
+
+        # Submit a correct answer. Now, there are two answers.
+        correct_answer = 'B, C'
+        correct_results = dict(
+            answer=correct_answer,
+            correct=True,
+            **self.common_results
+        )
+        all_results = [wrong_results, correct_results]
+        with self.login_context:
+            assert go(correct_answer, 'T') == all_results
+        self.check_timestamp(MchoiceAnswers)
+
+        # Submit a wrong answer. Nothing should be added.
+        with self.login_context:
+            assert go(wrong_answer, 'F') == all_results
 
 
 # Web2PyBoolean tests
