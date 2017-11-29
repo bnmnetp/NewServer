@@ -95,20 +95,15 @@ def result_remove_usual(model):
 
 
 # Apply these fixes to every test `automatically <https://docs.pytest.org/en/latest/fixture.html#using-fixtures-from-classes-modules-or-projects>`_.
-@pytest.mark.usefixtures("test_client_")
+@pytest.mark.usefixtures("BaseTest_setup_common")
 # Group everything in a class, so it's easy to share the ``test_client``.
 class BaseTest:
-    # Create a fixture which stores the test_client in ``self``.
+    # Create a fixture which stores the commonly-used items in ``self``.
     @pytest.fixture()
-    def test_client_(self, test_client):
+    def BaseTest_setup_common(self, test_client):
         self.test_client = test_client
         self.username = 'brad@test.user'
         self.login_context = LoginContext(self, self.username, 'grouplens')
-        self.common_results = dict(
-            sid=self.username,
-            div_id='test_div_id',
-            course_name='test_child_course1',
-        )
 
     # _`get_check`: Get a web page, checking its returned status code and optionally its contents.
     def get_check(self,

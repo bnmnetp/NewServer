@@ -35,6 +35,9 @@ def sp(_str='', **kwargs):
 # Same for the book API: ap (api path)
 def ap(_str='', **kwargs):
     return url_joiner(api.url_prefix, _str, **kwargs)
+# Define the ``hsblog`` endpoint.
+def hsblog(**kwargs):
+    return ap('hsblog', **kwargs)
 
 
 # Server tests
@@ -84,20 +87,27 @@ class TestRunestoneServer(BaseTest):
 
 # API tests
 # =========
+@pytest.mark.usefixtures("TestRunestoneApi_setup_common")
 class TestRunestoneApi(BaseTest):
 # hsblog
 # ------
-    hsblog = 'hsblog'
     common_params = dict(
         div_id='test_div_id',
         course='test_child_course1'
     )
 
+    @pytest.fixture()
+    def TestRunestoneApi_setup_common(self):
+        self.common_results = dict(
+            sid=self.username,
+            div_id='test_div_id',
+            course_name='test_child_course1',
+        )
+
     # Check the consistency of values put in Useinfo.
     def test_1(self):
         with self.login_context:
-            self.get_valid_json(ap(
-                self.hsblog,
+            self.get_valid_json(hsblog(
                 act=1,
                 event='mChoice',
                 time=5,
@@ -123,8 +133,7 @@ class TestRunestoneApi(BaseTest):
     # Check that unauthenticed access produces a consistent sid.
     def test_2(self):
         def go(is_auth=False):
-            self.get_valid_json(ap(
-                self.hsblog,
+            self.get_valid_json(hsblog(
                 act='xxx',
                 event='mChoice',
                 answer='yyy',
@@ -148,8 +157,7 @@ class TestRunestoneApi(BaseTest):
     # Check that invalid parameters return an error.
     def test_2_1(self):
         # Unknown course.
-        self.get_valid_json(ap(
-            self.hsblog,
+        self.get_valid_json(hsblog(
             act='xxx',
             course='xxx',
         ), dict(
@@ -159,8 +167,7 @@ class TestRunestoneApi(BaseTest):
         ))
 
         # Undefined course.
-        self.get_valid_json(ap(
-            self.hsblog,
+        self.get_valid_json(hsblog(
             act='xxx',
         ), dict(
             log=False,
@@ -170,8 +177,7 @@ class TestRunestoneApi(BaseTest):
 
         # Undefined event.
         with self.login_context:
-            self.get_valid_json(ap(
-                self.hsblog,
+            self.get_valid_json(hsblog(
                 act='xxx',
                 **self.common_params
             ), dict(
@@ -180,8 +186,7 @@ class TestRunestoneApi(BaseTest):
                 error='Missing argument event.',
             ))
 
-            self.get_valid_json(ap(
-                self.hsblog,
+            self.get_valid_json(hsblog(
                 act='xxx',
                 div_id='yyy',
                 course='test_child_course1',
@@ -192,8 +197,7 @@ class TestRunestoneApi(BaseTest):
             ))
 
         # Strings that are too long for a column.
-        self.get_valid_json(ap(
-            self.hsblog,
+        self.get_valid_json(hsblog(
             event='x'*600,
             **self.common_params
         ), dict(
@@ -201,8 +205,7 @@ class TestRunestoneApi(BaseTest):
             is_authenticated=False,
             error='Argument event length 600 exceeds the maximum length of 512.',
         ))
-        self.get_valid_json(ap(
-            self.hsblog,
+        self.get_valid_json(hsblog(
             event='xxx',
             act='x'*600,
             **self.common_params
@@ -223,8 +226,7 @@ class TestRunestoneApi(BaseTest):
     def test_3(self):
         def go(act, log, auth=True):
             self.get_valid_json(
-                ap(
-                    self.hsblog,
+                hsblog(
                     act=act,
                     event='timedExam',
                     correct=1,
@@ -247,8 +249,7 @@ class TestRunestoneApi(BaseTest):
             go('finish', True)
             # Don't provide all the parameters.
             self.get_valid_json(
-                ap(
-                    self.hsblog,
+                hsblog(
                     act='reset',
                     event='timedExam',
                     **self.common_params
@@ -286,7 +287,7 @@ class TestRunestoneApi(BaseTest):
     # Check generic_validator.
     def test_4(self):
         # Create a `mock request_context <http://flask.pocoo.org/docs/0.12/testing/#other-testing-tricks>`_ with no arguments.
-        with app.test_request_context(ap(self.hsblog)):
+        with app.test_request_context(hsblog()):
             with pytest.raises(RequestValidationFailure) as exc_info:
                 generic_validator('param1', None, '')
             assert exc_info.value.args[0] == 'Missing argument param1.'
@@ -295,7 +296,7 @@ class TestRunestoneApi(BaseTest):
             assert generic_validator('param1', None, '', 1) == 1
 
         # Check validation.
-        with app.test_request_context(ap(self.hsblog, param1='xxx')):
+        with app.test_request_context(hsblog(param1='xxx')):
             with pytest.raises(RequestValidationFailure) as exc_info:
                 # Return an error as a string.
                 def test_validator(arg):
@@ -319,17 +320,17 @@ class TestRunestoneApi(BaseTest):
 
         # Create generic test functions.
         def go(test_str, column):
-            with app.test_request_context(ap(self.hsblog, param1=test_str)):
+            with app.test_request_context(hsblog(param1=test_str)):
                 return sql_validator('param1', column)
 
         def exception_go(test_str, column):
-            with app.test_request_context(ap(self.hsblog, param1=test_str)):
+            with app.test_request_context(hsblog(param1=test_str)):
                 with pytest.raises(RequestValidationFailure) as exc_info:
                     sql_validator('param1', column)
                 return exc_info.value.args[0]
 
         # **Test with a String column**
-        with app.test_request_context(ap(self.hsblog)):
+        with app.test_request_context(hsblog()):
             # Test missing argument.
             with pytest.raises(RequestValidationFailure) as exc_info:
                 sql_validator('param1', ModelForTesting.test_string)
@@ -369,16 +370,22 @@ class TestRunestoneApi(BaseTest):
         assert go_int('0') == 0
         assert exception_go('xxx', ModelForTesting.test_int) == 'Unable to convert argument param1 to an integer.'
 
-    # Test multiple choice questions.
-    def test_6(self):
-        def go(answer, correct, auth=True):
+    # A common testing pattern: questions which update only if the answer is correct.
+    def question_checker(self,
+        # The wrong answer, which is submitted first.
+        wrong_answer,
+        # The expected results from the wrong answer.
+        wrong_results,
+        # The test is repeated with a correct answer and results.
+        correct_answer,
+        correct_results):
+
+        def go(auth=True, **kwargs):
             self.get_valid_json(
-                ap(
-                    self.hsblog,
+                hsblog(
                     act='',
                     event='mChoice',
-                    answer=answer,
-                    correct=correct,
+                    **kwargs,
                     **self.common_params
                 ), dict(
                     log=True,
@@ -388,35 +395,39 @@ class TestRunestoneApi(BaseTest):
 
             return result_remove_usual(MchoiceAnswers)
 
-        wrong_answer = 'A, B'
         # An unauthenicated submission won't save the answer.
-        assert go(wrong_answer, 'F', False) == []
+        assert go(False, **wrong_answer) == []
 
         # Submit an incorrect answer.
-        wrong_results = dict(
-            answer=wrong_answer,
-            correct=False,
-            **self.common_results
-        )
         with self.login_context:
-            assert go(wrong_answer, 'F') == [wrong_results]
+            assert go(**wrong_answer) == [wrong_results]
         self.check_timestamp(MchoiceAnswers)
 
         # Submit a correct answer. Now, there are two answers.
-        correct_answer = 'B, C'
-        correct_results = dict(
-            answer=correct_answer,
-            correct=True,
-            **self.common_results
-        )
         all_results = [wrong_results, correct_results]
         with self.login_context:
-            assert go(correct_answer, 'T') == all_results
+            assert go(**correct_answer) == all_results
         self.check_timestamp(MchoiceAnswers)
 
         # Submit a wrong answer. Nothing should be added.
         with self.login_context:
-            assert go(wrong_answer, 'F') == all_results
+            assert go(**wrong_answer) == all_results
+
+    # Test multiple choice questions.
+    def test_6(self):
+        wrong_answer = dict(answer='A, B', correct='F')
+        wrong_results = dict(
+            answer=wrong_answer['answer'],
+            correct=wrong_answer['correct'] == 'T',
+            **self.common_results
+        )
+        correct_answer = dict(answer='B, C', correct='T')
+        correct_results = dict(
+            answer=correct_answer['answer'],
+            correct=correct_answer['correct'] == 'T',
+            **self.common_results
+        )
+        self.question_checker(wrong_answer, wrong_results, correct_answer, correct_results)
 
 
 # Web2PyBoolean tests
