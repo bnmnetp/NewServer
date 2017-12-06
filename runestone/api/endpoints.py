@@ -20,7 +20,7 @@ from flask_user import current_user, is_authenticated
 
 # Local imports
 # -------------
-from ..model import db, Useinfo, TimedExam, MchoiceAnswers, Courses, Questions, Web2PyBoolean
+from ..model import db, Useinfo, TimedExam, MchoiceAnswers, Courses, Questions, Web2PyBoolean, FitbAnswers
 
 # Blueprint
 # =========
@@ -34,7 +34,7 @@ api = Blueprint('api', __name__, url_prefix='/api')
 #
 # Validate a request argument. It returns a string, containing the validated argument, or raises a ``RequestValidationFailure``.
 def generic_validator(
-    # _`arg_name:` The name of the request argument, as a string.
+    # _`arg_name`: The name of the request argument, as a string.
     arg_name,
     # Either: A function which takes one parameter, the argument's value. It must return a falsey value if the value did not validate. Or: None (no validation).
     validation_func,
@@ -54,7 +54,7 @@ def generic_validator(
     return arg
 
 
-# Validate a request argument based on a SQLAlchemy column. The value (appropriate converted) is returned.
+# Validate a request argument based on a SQLAlchemy column. The value (appropriately converted) is returned.
 def sql_validator(
     # See arg_name_.
     arg_name,
@@ -151,11 +151,24 @@ def request_validation_handler(on_error_func):
 #   mChoice
 #       A multiple-choice answer. Additional arguments:
 #
+#       .. _answer1:
+#
 #       answer
 #           The answer for the question, as a string. TODO: format?
 #
+#       .. _correct:
+#
 #       correct
 #           True if this answer is correct.
+#
+#   fillb
+#       A fill-in-the-blank answer. Additional arguments:
+#
+#       answer
+#           See `answer <answer1>`_. TODO: format?
+#
+#       correct
+#           See correct_.
 #
 # TODO: Check these changes from existing code:
 #
@@ -229,6 +242,19 @@ def log_book_event():
                     div_id=div_id,
                     answer=sql_validator('answer', MchoiceAnswers.answer),
                     correct=sql_validator('correct', MchoiceAnswers.correct),
+                    course_name=course
+                ))
+
+        elif event == 'fillb':
+            # Has the user already submitted a correct answer for this question?
+            if FitbAnswers[sid, div_id, course][True].q.count() == 0:
+                # No, so insert this answer.
+                db.session.add(FitbAnswers(
+                    sid=sid,
+                    timestamp=ts,
+                    div_id=div_id,
+                    answer=sql_validator('answer', FitbAnswers.answer),
+                    correct=sql_validator('correct', FitbAnswers.correct),
                     course_name=course
                 ))
 

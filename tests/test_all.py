@@ -24,7 +24,7 @@ import pytest
 from base_test import BaseTest, app, LoginContext, url_joiner, result_remove_usual
 from runestone.book_server.server import book_server
 from runestone.api.endpoints import api, generic_validator, sql_validator, RequestValidationFailure
-from runestone.model import db, Courses, Useinfo, TimedExam, IdMixin, Web2PyBoolean, MchoiceAnswers
+from runestone.model import db, Courses, Useinfo, TimedExam, IdMixin, Web2PyBoolean, MchoiceAnswers, FitbAnswers
 
 
 # Utilities
@@ -372,6 +372,10 @@ class TestRunestoneApi(BaseTest):
 
     # A common testing pattern: questions which update only if the answer is correct.
     def question_checker(self,
+        # The `hsblog endpoint` ``event`` to submit.
+        event,
+        # The SQLAlchemy model which records answers for this event.
+        model,
         # The wrong answer, which is submitted first.
         wrong_answer,
         # The expected results from the wrong answer.
@@ -384,7 +388,7 @@ class TestRunestoneApi(BaseTest):
             self.get_valid_json(
                 hsblog(
                     act='',
-                    event='mChoice',
+                    event=event,
                     **kwargs,
                     **self.common_params
                 ), dict(
@@ -393,7 +397,7 @@ class TestRunestoneApi(BaseTest):
                 )
             )
 
-            return result_remove_usual(MchoiceAnswers)
+            return result_remove_usual(model)
 
         # An unauthenicated submission won't save the answer.
         assert go(False, **wrong_answer) == []
@@ -401,13 +405,13 @@ class TestRunestoneApi(BaseTest):
         # Submit an incorrect answer.
         with self.login_context:
             assert go(**wrong_answer) == [wrong_results]
-        self.check_timestamp(MchoiceAnswers)
+        self.check_timestamp(model)
 
         # Submit a correct answer. Now, there are two answers.
         all_results = [wrong_results, correct_results]
         with self.login_context:
             assert go(**correct_answer) == all_results
-        self.check_timestamp(MchoiceAnswers)
+        self.check_timestamp(model)
 
         # Submit a wrong answer. Nothing should be added.
         with self.login_context:
@@ -427,7 +431,23 @@ class TestRunestoneApi(BaseTest):
             correct=correct_answer['correct'] == 'T',
             **self.common_results
         )
-        self.question_checker(wrong_answer, wrong_results, correct_answer, correct_results)
+        self.question_checker('mChoice', MchoiceAnswers, wrong_answer, wrong_results, correct_answer, correct_results)
+
+    # Test fill-in-the-blank questions.
+    def test_7(self):
+        wrong_answer = dict(answer='foo', correct='F')
+        wrong_results = dict(
+            answer=wrong_answer['answer'],
+            correct=wrong_answer['correct'] == 'T',
+            **self.common_results
+        )
+        correct_answer = dict(answer='bar', correct='T')
+        correct_results = dict(
+            answer=correct_answer['answer'],
+            correct=correct_answer['correct'] == 'T',
+            **self.common_results
+        )
+        self.question_checker('fillb', FitbAnswers, wrong_answer, wrong_results, correct_answer, correct_results)
 
 
 # Web2PyBoolean tests
