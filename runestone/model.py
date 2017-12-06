@@ -68,68 +68,9 @@ class IdMixin:
     id = db.Column(db.Integer, primary_key=True)
 
 
-class Courses(db.Model, IdMixin):
-    # _`course_name`: The name of this course.
-    course_name = db.Column(db.String(512), unique=True)
-    term_start_date = db.Column(db.Date)
-    # TODO: Why not use base_course_id instead? _`base_course`: the course from which this course was derived. TODO: If this is a base course, this field should be identical to the course_name_?
-    base_course = db.Column(db.String(512), db.ForeignKey('courses.course_name'))
-    # TODO: This should go in a different table. Not all courses have a Python/Skuplt component.
-    python3 = db.Column(Web2PyBoolean)
-    login_required = db.Column(Web2PyBoolean)
-
-    # Create ``child_courses`` which all refer to a single ``parent_course``: children's ``base_course`` matches a parent's ``course_name``. See `adjacency list relationships <http://docs.sqlalchemy.org/en/latest/orm/self_referential.html#self-referential>`_.
-    child_courses = db.relationship('Courses', backref=backref('parent_course', remote_side=[course_name]))
-
-    # Define a default query: the username if provided a string. Otherwise, automatically fall back to the id.
-    @classmethod
-    def default_query(cls, key):
-        if isinstance(key, str):
-            return cls.course_name == key
-
-
-# User info logged by the `hsblog endpoint`. See there for more info.
-class Useinfo(db.Model, IdMixin):
-    # _`timestamp`: when this entry was recorded by this webapp.
-    timestamp = db.Column(db.DateTime)
-    # _`sid`: TODO: The student id? (user) which produced this row.
-    sid = db.Column(db.String(512))
-    # The type of question (timed exam, fill in the blank, etc.).
-    event = db.Column(db.String(512))
-    # TODO: What is this? The action associated with this log entry?
-    act = db.Column(db.String(512))
-    # _`div_id`: the ID of the question which produced this entry.
-    div_id = db.Column(db.String(512))
-    # _`course_id`: the Courses ``course_name`` **NOT** the ``id`` this row refers to. TODO: Use the ``id`` instead!
-    course_id = db.Column(db.String(512), db.ForeignKey('courses.course_name'))
-
-    # Define a default query: the username if provided a string. Otherwise, automatically fall back to the id.
-    @classmethod
-    def default_query(cls, key):
-        if isinstance(key, str):
-            return cls.sid == key
-
-
-class TimedExam(db.Model, IdMixin):
-    # TODO: these entries duplicate Useinfo.timestamp. Why not just have a timestamp_id field?
-    timestamp = db.Column(db.DateTime)
-    div_id = db.Column(db.String(512))
-    sid = db.Column(db.String(512))
-    course_name = db.Column(db.String(512))
-
-    correct = db.Column(db.Integer)
-    incorrect = db.Column(db.Integer)
-    skipped = db.Column(db.Integer)
-    time_taken = db.Column(db.Integer)
-    reset = db.Column(Web2PyBoolean)
-
-    # Define a default query: the username if provided a string. Otherwise, automatically fall back to the id.
-    @classmethod
-    def default_query(cls, key):
-        if isinstance(key, str):
-            return cls.sid == key
-
-
+# AuthUser
+# --------
+# This matches Web2Py's fields, and also works with Flask-User.
 class AuthUser(db.Model, UserMixin, IdMixin):
     username = db.Column(db.String(512), nullable=False, unique=True)
     first_name = db.Column(db.String(512))
@@ -152,37 +93,56 @@ class AuthUser(db.Model, UserMixin, IdMixin):
             return cls.username == key
 
 
-# Many of the tables containing answers are always accessed by sid, div_id and course_name. Provide this as a default query. TODO: Obviously, this is poor database design -- there should be a single key, rather than using all three as a key. Refactor.
-class AnswerQueryMixin(IdMixin):
+# Courses
+# -------
+# Defines either a base course (which must be manually added to the database) or a derived course created by an instructor.
+class Courses(db.Model, IdMixin):
+    # _`course_name`: The name of this course.
+    course_name = db.Column(db.String(512), unique=True)
+    term_start_date = db.Column(db.Date)
+    # TODO: Why not use base_course_id instead? _`base_course`: the course from which this course was derived. TODO: If this is a base course, this field should be identical to the course_name_?
+    base_course = db.Column(db.String(512), db.ForeignKey('courses.course_name'))
+    # TODO: This should go in a different table. Not all courses have a Python/Skuplt component.
+    python3 = db.Column(Web2PyBoolean)
+    login_required = db.Column(Web2PyBoolean)
+
+    # Create ``child_courses`` which all refer to a single ``parent_course``: children's ``base_course`` matches a parent's ``course_name``. See `adjacency list relationships <http://docs.sqlalchemy.org/en/latest/orm/self_referential.html#self-referential>`_.
+    child_courses = db.relationship('Courses', backref=backref('parent_course', remote_side=[course_name]))
+
+    # Define a default query: the username if provided a string. Otherwise, automatically fall back to the id.
     @classmethod
     def default_query(cls, key):
-        if isinstance(key, tuple):
-            sid, div_id, course_name = key
-            return (cls.sid == sid) and (cls.div_id == div_id) and (course_name == course_name)
+        if isinstance(key, str):
+            return cls.course_name == key
 
 
-class MchoiceAnswers(db.Model, AnswerQueryMixin):
-    # See timestamp_.
+# Useinfo
+# -------
+# User info logged by the `hsblog endpoint`. See there for more info.
+class Useinfo(db.Model, IdMixin):
+    # _`timestamp`: when this entry was recorded by this webapp.
     timestamp = db.Column(db.DateTime)
-    # See div_id_.
-    div_id = db.Column(db.String(512))
-    # See sid_.
+    # _`sid`: TODO: The student id? (user) which produced this row.
     sid = db.Column(db.String(512))
-    # See course_name_.
-    course_name = db.Column(db.String(512), db.ForeignKey('courses.course_name'))
-    # The answer to this multiple choice question. TODO: What is the format?
-    answer = db.Column(db.String(50))
-    # True if this answer is correct.
-    correct = db.Column(Web2PyBoolean)
+    # The type of question (timed exam, fill in the blank, etc.).
+    event = db.Column(db.String(512))
+    # TODO: What is this? The action associated with this log entry?
+    act = db.Column(db.String(512))
+    # _`div_id`: the ID of the question which produced this entry.
+    div_id = db.Column(db.String(512))
+    # _`course_id`: the Courses ``course_name`` **NOT** the ``id`` this row refers to. TODO: Use the ``id`` instead!
+    course_id = db.Column(db.String(512), db.ForeignKey('courses.course_name'))
 
+    # Define a default query: the username if provided a string. Otherwise, automatically fall back to the id.
     @classmethod
     def default_query(cls, key):
-        if isinstance(key, bool):
-            return key == cls.correct
-        else:
-            return super().default_query(key)
+        if isinstance(key, str):
+            return cls.sid == key
 
 
+# Questions
+# ---------
+# A question in the book; this data is provided by Sphinx.
 class Questions(db.Model, IdMixin):
     # The base_course_ this question is in.
     base_course = db.Column(db.String(512), nullable=False)
@@ -207,9 +167,74 @@ class Questions(db.Model, IdMixin):
             return cls.name == key
 
 
+# Answers to specific question types
+# ----------------------------------
+class TimedExam(db.Model, IdMixin):
+    # TODO: these entries duplicate Useinfo.timestamp. Why not just have a timestamp_id field?
+    timestamp = db.Column(db.DateTime)
+    div_id = db.Column(db.String(512))
+    sid = db.Column(db.String(512))
+    course_name = db.Column(db.String(512))
+
+    correct = db.Column(db.Integer)
+    incorrect = db.Column(db.Integer)
+    skipped = db.Column(db.Integer)
+    time_taken = db.Column(db.Integer)
+    reset = db.Column(Web2PyBoolean)
+
+    # Define a default query: the username if provided a string. Otherwise, automatically fall back to the id.
+    @classmethod
+    def default_query(cls, key):
+        if isinstance(key, str):
+            return cls.sid == key
+
+
+# Many of the tables containing answers are always accessed by sid, div_id and course_name. Provide this as a default query. TODO: Obviously, this is poor database design -- there should be a single key, rather than using all three as a key. Refactor.
+class AnswerQueryMixin(IdMixin):
+    @classmethod
+    def default_query(cls, key):
+        if isinstance(key, tuple):
+            sid, div_id, course_name = key
+            return (cls.sid == sid) and (cls.div_id == div_id) and (course_name == course_name)
+        elif isinstance(key, bool):
+            return key == cls.correct
+
+
+# An answer to a multiple-choice question.
+class MchoiceAnswers(db.Model, AnswerQueryMixin):
+    # See timestamp_.
+    timestamp = db.Column(db.DateTime)
+    # See div_id_.
+    div_id = db.Column(db.String(512))
+    # See sid_.
+    sid = db.Column(db.String(512))
+    # See course_name_.
+    course_name = db.Column(db.String(512), db.ForeignKey('courses.course_name'))
+    # The answer to this question. TODO: What is the format?
+    answer = db.Column(db.String(50))
+    # True if this answer is correct.
+    correct = db.Column(Web2PyBoolean)
+
+
+# An answer to a fill-in-the-blank question.
+class FitbAnswers(db.Model, AnswerQueryMixin):
+    # See timestamp_.
+    timestamp = db.Column(db.DateTime)
+    # See div_id_.
+    div_id = db.Column(db.String(512))
+    # See sid_.
+    sid = db.Column(db.String(512))
+    # See course_name_.
+    course_name = db.Column(db.String(512), db.ForeignKey('courses.course_name'))
+    # The answer to this question. TODO: What is the format?
+    answer = db.Column(db.String(50))
+    # True if this answer is correct.
+    correct = db.Column(Web2PyBoolean)
+
+
 # Flask-User customization
 # ========================
-# This can't be placed in `extensions.py`, because it needs the ``User`` model to be defined.
+# This can't be placed in `extensions.py`, because it needs the AuthUser_ model to be defined.
 #
 # Use's web2py's encryption. See http://flask-user.readthedocs.io/en/v0.6/customization.html#password-hashing.
 class UserManagerWeb2Py(UserManager):
