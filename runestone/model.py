@@ -14,6 +14,7 @@
 # Third-party imports
 # -------------------
 from sqlalchemy.orm import backref
+from sqlalchemy.ext.declarative import declared_attr
 import sqlalchemy.types as types
 from flask_user import UserMixin, UserManager, SQLAlchemyAdapter
 from gluon.validators import CRYPT
@@ -169,17 +170,36 @@ class Questions(db.Model, IdMixin):
 
 # Answers to specific question types
 # ----------------------------------
-class TimedExam(db.Model, IdMixin):
+# Many of the tables containing answers are always accessed by sid, div_id and course_name. Provide this as a default query. TODO: Obviously, this is poor database design -- there should be a single key, rather than using all three as a key. Refactor.
+class AnswerMixin(IdMixin):
     # TODO: these entries duplicate Useinfo.timestamp. Why not just have a timestamp_id field?
+    #
+    # See timestamp_.
     timestamp = db.Column(db.DateTime)
+    # See div_id_.
     div_id = db.Column(db.String(512))
+    # See sid_.
     sid = db.Column(db.String(512))
-    course_name = db.Column(db.String(512))
 
+    # See course_name_. Mixins with foreign keys need `special treatment <http://docs.sqlalchemy.org/en/latest/orm/extensions/declarative/mixins.html#mixing-in-columns>`_.
+    @declared_attr
+    def course_name(cls):
+        return db.Column(db.String(512), db.ForeignKey('courses.course_name'))
+
+    @classmethod
+    def default_query(cls, key):
+        if isinstance(key, tuple):
+            sid, div_id, course_name = key
+            return (cls.sid == sid) and (cls.div_id == div_id) and (course_name == course_name)
+
+
+class TimedExam(db.Model, AnswerMixin):
+    # See the `timed exam endpoint parameters <timed exam>` for documenation on these columns.
     correct = db.Column(db.Integer)
     incorrect = db.Column(db.Integer)
     skipped = db.Column(db.Integer)
     time_taken = db.Column(db.Integer)
+    # True if the ``act`` endpoint parameter was ``'reset'``; otherwise, False.
     reset = db.Column(Web2PyBoolean)
 
     # Define a default query: the username if provided a string. Otherwise, automatically fall back to the id.
@@ -189,47 +209,35 @@ class TimedExam(db.Model, IdMixin):
             return cls.sid == key
 
 
-# Many of the tables containing answers are always accessed by sid, div_id and course_name. Provide this as a default query. TODO: Obviously, this is poor database design -- there should be a single key, rather than using all three as a key. Refactor.
-class AnswerQueryMixin(IdMixin):
+# Like an AnswerMixin, but also has a boolean correct_ field.
+class CorrectAnswerMixin(AnswerMixin):
+    # _`correct`: True if this answer is correct.
+    correct = db.Column(Web2PyBoolean)
+
     @classmethod
     def default_query(cls, key):
-        if isinstance(key, tuple):
-            sid, div_id, course_name = key
-            return (cls.sid == sid) and (cls.div_id == div_id) and (course_name == course_name)
-        elif isinstance(key, bool):
+        if isinstance(key, bool):
             return key == cls.correct
+        else:
+            return super().default_query(key)
 
 
 # An answer to a multiple-choice question.
-class MchoiceAnswers(db.Model, AnswerQueryMixin):
-    # See timestamp_.
-    timestamp = db.Column(db.DateTime)
-    # See div_id_.
-    div_id = db.Column(db.String(512))
-    # See sid_.
-    sid = db.Column(db.String(512))
-    # See course_name_.
-    course_name = db.Column(db.String(512), db.ForeignKey('courses.course_name'))
-    # The answer to this question. TODO: What is the format?
+class MchoiceAnswers(db.Model, CorrectAnswerMixin):
+    # _`answer`: The answer to this question. TODO: what is the format?
     answer = db.Column(db.String(50))
-    # True if this answer is correct.
-    correct = db.Column(Web2PyBoolean)
 
 
 # An answer to a fill-in-the-blank question.
-class FitbAnswers(db.Model, AnswerQueryMixin):
-    # See timestamp_.
-    timestamp = db.Column(db.DateTime)
-    # See div_id_.
-    div_id = db.Column(db.String(512))
-    # See sid_.
-    sid = db.Column(db.String(512))
-    # See course_name_.
-    course_name = db.Column(db.String(512), db.ForeignKey('courses.course_name'))
-    # The answer to this question. TODO: What is the format?
-    answer = db.Column(db.String(50))
-    # True if this answer is correct.
-    correct = db.Column(Web2PyBoolean)
+class FitbAnswers(db.Model, CorrectAnswerMixin):
+    # See answer_. TODO: what is the format?
+    answer = db.Column(db.String(512))
+
+
+# An answer to a drag-and-drop question.
+class DragndropAnswers(db.Model, CorrectAnswerMixin):
+    # See answer_. TODO: what is the format?
+    answer = db.Column(db.String(512))
 
 
 # Flask-User customization

@@ -20,7 +20,7 @@ from flask_user import current_user, is_authenticated
 
 # Local imports
 # -------------
-from ..model import db, Useinfo, TimedExam, MchoiceAnswers, Courses, Questions, Web2PyBoolean, FitbAnswers
+from ..model import db, Useinfo, TimedExam, MchoiceAnswers, Courses, Questions, Web2PyBoolean, FitbAnswers, DragndropAnswers
 
 # Blueprint
 # =========
@@ -112,6 +112,8 @@ def request_validation_handler(on_error_func):
     return decorator
 
 
+# DRY code!
+
 # .. _hsblog endpoint:
 #
 # hsblog endpoint
@@ -129,6 +131,8 @@ def request_validation_handler(on_error_func):
 #
 # event
 #   The type of event being logged. Valid values are:
+#
+#   .. _timed exam:
 #
 #   timedExam
 #       A timed exam event. The following additional arguments for this event are:
@@ -163,6 +167,15 @@ def request_validation_handler(on_error_func):
 #
 #   fillb
 #       A fill-in-the-blank answer. Additional arguments:
+#
+#       answer
+#           See `answer <answer1>`_. TODO: format?
+#
+#       correct
+#           See correct_.
+#
+#   dragNdrop
+#       A drag-and-drop answer. Additional args:
 #
 #       answer
 #           See `answer <answer1>`_. TODO: format?
@@ -215,28 +228,12 @@ def log_book_event():
 
     if is_auth:
 
-        if event == 'timedExam':
-            if act not in ('finish', 'reset'):
-                # Return log=False on an invalid ``act``.
-                return jsonify(log=False, is_authenticated=is_auth)
-
-            db.session.add(TimedExam(
-                sid=sid,
-                course_name=course,
-                correct=sql_validator('correct', TimedExam.correct),
-                incorrect=sql_validator('incorrect', TimedExam.incorrect),
-                skipped=sql_validator('skipped', TimedExam.skipped),
-                time_taken=sql_validator('time', TimedExam.time_taken),
-                timestamp=ts,
-                div_id=div_id,
-                reset=act == 'reset' or None,
-            ))
-
-        elif event == 'mChoice':
+        # A common pattern: add an answer only if the current answer isn't correct.
+        def add_if_incorrect(model):
             # Has the user already submitted a correct answer for this question?
-            if MchoiceAnswers[sid, div_id, course][True].q.count() == 0:
+            if model[sid, div_id, course][True].q.count() == 0:
                 # No, so insert this answer.
-                db.session.add(MchoiceAnswers(
+                db.session.add(model(
                     sid=sid,
                     timestamp=ts,
                     div_id=div_id,
@@ -245,19 +242,29 @@ def log_book_event():
                     course_name=course
                 ))
 
-        elif event == 'fillb':
-            # Has the user already submitted a correct answer for this question?
-            if FitbAnswers[sid, div_id, course][True].q.count() == 0:
-                # No, so insert this answer.
-                db.session.add(FitbAnswers(
-                    sid=sid,
-                    timestamp=ts,
-                    div_id=div_id,
-                    answer=sql_validator('answer', FitbAnswers.answer),
-                    correct=sql_validator('correct', FitbAnswers.correct),
-                    course_name=course
-                ))
+        if event == 'timedExam':
+            if act not in ('finish', 'reset'):
+                # Return log=False on an invalid ``act``.
+                return jsonify(log=False, is_authenticated=is_auth)
 
+            db.session.add(TimedExam(
+                sid=sid,
+                timestamp=ts,
+                div_id=div_id,
+                course_name=course,
+                correct=sql_validator('correct', TimedExam.correct),
+                incorrect=sql_validator('incorrect', TimedExam.incorrect),
+                skipped=sql_validator('skipped', TimedExam.skipped),
+                time_taken=sql_validator('time', TimedExam.time_taken),
+                reset=act == 'reset' or None,
+            ))
+
+        elif event == 'mChoice':
+            add_if_incorrect(MchoiceAnswers)
+        elif event == 'fillb':
+            add_if_incorrect(FitbAnswers)
+        elif event == 'dragNdrop':
+            add_if_incorrect(DragndropAnswers)
         else:
             return jsonify(log=False, is_authenticated=is_auth, error='Unknown event {}.'.format(event))
 
