@@ -20,7 +20,7 @@ from flask_user import current_user, is_authenticated
 
 # Local imports
 # -------------
-from ..model import db, Useinfo, TimedExam, MchoiceAnswers, Courses, Questions, Web2PyBoolean, FitbAnswers, DragndropAnswers, ClickableareaAnswers, ParsonsAnswers, CodelensAnswers
+from ..model import db, Useinfo, TimedExam, MchoiceAnswers, Courses, Questions, Web2PyBoolean, FitbAnswers, DragndropAnswers, ClickableareaAnswers, ParsonsAnswers, CodelensAnswers, ShortanswerAnswers
 
 # Blueprint
 # =========
@@ -228,20 +228,34 @@ def log_book_event():
 
     if is_auth:
 
+        # Common arguments used below.
+        common_kwargs = dict(timestamp=ts, sid=sid, div_id=div_id, course_name=course)
+
         # A common pattern: add an answer only if the current answer isn't correct.
         def add_if_incorrect(model, **kwargs):
             # Has the user already submitted a correct answer for this question?
             if model[sid, div_id, course][True].q.count() == 0:
                 # No, so insert this answer.
                 db.session.add(model(
-                    timestamp=ts,
-                    sid=sid,
-                    div_id=div_id,
-                    course_name=course,
                     answer=sql_validator('answer', MchoiceAnswers.answer),
                     correct=sql_validator('correct', MchoiceAnswers.correct),
+                    **common_kwargs,
                     **kwargs
                 ))
+
+        # Merge
+        def merge(model, **kwargs):
+            # Note: We can't use `merge <http://docs.sqlalchemy.org/en/latest/orm/session_state_management.html#unitofwork-merging>`_, because the primary key of XxxAnswers models is the ID, while we want to merge based on sid, div_id, and course. So, do the merge/upsert manually.
+            combined_kwargs = dict(**kwargs, **common_kwargs)
+            rows = model[sid, div_id, course].q
+            if rows.count() == 0:
+                # This entry doesn't exist. Add a new one.
+                db.session.add(model(**combined_kwargs))
+            else:
+                assert rows.count() == 1
+                # Only a signal entry exists. Merge fields into it. Note: this doesn't work: ``rows[0].__dict__.update(combined_kwargs)``.
+                for key, value in combined_kwargs.items():
+                    setattr(rows[0], key, value)
 
         if event == 'timedExam':
             if act not in ('finish', 'reset'):
@@ -249,15 +263,12 @@ def log_book_event():
                 return jsonify(log=False, is_authenticated=is_auth)
 
             db.session.add(TimedExam(
-                sid=sid,
-                timestamp=ts,
-                div_id=div_id,
-                course_name=course,
                 correct=sql_validator('correct', TimedExam.correct),
                 incorrect=sql_validator('incorrect', TimedExam.incorrect),
                 skipped=sql_validator('skipped', TimedExam.skipped),
                 time_taken=sql_validator('time', TimedExam.time_taken),
                 reset=act == 'reset' or None,
+                **common_kwargs,
             ))
 
         elif event == 'mChoice':
@@ -272,6 +283,9 @@ def log_book_event():
             add_if_incorrect(ParsonsAnswers, source=sql_validator('source', ParsonsAnswers.source))
         elif event == 'codelensq':
             add_if_incorrect(CodelensAnswers, source=sql_validator('source', CodelensAnswers.source))
+        elif event == 'shortanswer':
+            # TODO: for shortanswers just keep the latest?? -- the history will be in useinfo.
+            merge(ShortanswerAnswers, answer=sql_validator('answer', ShortanswerAnswers.answer))
         else:
             return jsonify(log=False, is_authenticated=is_auth, error='Unknown event {}.'.format(event))
 

@@ -24,7 +24,7 @@ import pytest
 from base_test import BaseTest, app, LoginContext, url_joiner, result_remove_usual
 from runestone.book_server.server import book_server
 from runestone.api.endpoints import api, generic_validator, sql_validator, RequestValidationFailure
-from runestone.model import db, Courses, Useinfo, TimedExam, IdMixin, Web2PyBoolean, MchoiceAnswers, FitbAnswers, DragndropAnswers, ClickableareaAnswers, ParsonsAnswers, CodelensAnswers
+from runestone.model import db, Courses, Useinfo, TimedExam, IdMixin, Web2PyBoolean, MchoiceAnswers, FitbAnswers, DragndropAnswers, ClickableareaAnswers, ParsonsAnswers, CodelensAnswers, ShortanswerAnswers
 
 
 # Utilities
@@ -486,6 +486,39 @@ class TestRunestoneApi(BaseTest):
         self.question_checker('clickableArea', ClickableareaAnswers, 'xxx', 'yyy')
         self.source_question_checker('parsons', ParsonsAnswers, 'xxx', 'xxx source', 'yyy', 'yyy source')
         self.source_question_checker('codelensq', CodelensAnswers, 'xxx', 'xxx source', 'yyy', 'yyy source')
+
+    def test_7(self):
+        event = 'shortanswer'
+        model = ShortanswerAnswers
+        first_answer_dict = dict(answer='xxx')
+        first_results_dict = dict(**first_answer_dict, **self.common_results)
+        second_answer_dict = dict(answer='yyy')
+        second_results_dict = dict(**second_answer_dict, **self.common_results)
+
+        def go(auth=True, **kwargs):
+            self.get_valid_json(
+                hsblog(
+                    act='',
+                    event=event,
+                    **kwargs,
+                    **self.common_params
+                ), dict(
+                    log=True,
+                    is_authenticated=auth,
+                )
+            )
+
+            return result_remove_usual(model)
+
+        # An unauthenticated submission won't save the answer.
+        assert go(False, **first_answer_dict) == []
+
+        # Submit some answers.
+        with self.login_context:
+            assert go(**first_answer_dict) == [first_results_dict]
+            self.check_timestamp(model)
+
+            assert go(**second_answer_dict) == [second_results_dict]
 
 
 # Web2PyBoolean tests

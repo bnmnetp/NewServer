@@ -262,6 +262,11 @@ class CodelensAnswers(db.Model, CorrectAnswerMixin):
     source = db.Column(db.String(512))
 
 
+class ShortanswerAnswers(db.Model, AnswerMixin):
+    # See answer_. TODO: what is the format?
+    answer = db.Column(db.String(512))
+
+
 # Flask-User customization
 # ========================
 # This can't be placed in `extensions.py`, because it needs the AuthUser_ model to be defined.
