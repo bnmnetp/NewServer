@@ -20,7 +20,7 @@ from flask_user import current_user, is_authenticated
 
 # Local imports
 # -------------
-from ..model import db, Useinfo, TimedExam, MchoiceAnswers, Courses, Questions, Web2PyBoolean, FitbAnswers, DragndropAnswers, ClickableareaAnswers
+from ..model import db, Useinfo, TimedExam, MchoiceAnswers, Courses, Questions, Web2PyBoolean, FitbAnswers, DragndropAnswers, ClickableareaAnswers, ParsonsAnswers, CodelensAnswers
 
 # Blueprint
 # =========
@@ -229,17 +229,18 @@ def log_book_event():
     if is_auth:
 
         # A common pattern: add an answer only if the current answer isn't correct.
-        def add_if_incorrect(model):
+        def add_if_incorrect(model, **kwargs):
             # Has the user already submitted a correct answer for this question?
             if model[sid, div_id, course][True].q.count() == 0:
                 # No, so insert this answer.
                 db.session.add(model(
-                    sid=sid,
                     timestamp=ts,
+                    sid=sid,
                     div_id=div_id,
+                    course_name=course,
                     answer=sql_validator('answer', MchoiceAnswers.answer),
                     correct=sql_validator('correct', MchoiceAnswers.correct),
-                    course_name=course
+                    **kwargs
                 ))
 
         if event == 'timedExam':
@@ -267,6 +268,10 @@ def log_book_event():
             add_if_incorrect(DragndropAnswers)
         elif event == 'clickableArea':
             add_if_incorrect(ClickableareaAnswers)
+        elif event == 'parsons':
+            add_if_incorrect(ParsonsAnswers, source=sql_validator('source', ParsonsAnswers.source))
+        elif event == 'codelensq':
+            add_if_incorrect(CodelensAnswers, source=sql_validator('source', CodelensAnswers.source))
         else:
             return jsonify(log=False, is_authenticated=is_auth, error='Unknown event {}.'.format(event))
 

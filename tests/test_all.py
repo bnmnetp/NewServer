@@ -24,7 +24,7 @@ import pytest
 from base_test import BaseTest, app, LoginContext, url_joiner, result_remove_usual
 from runestone.book_server.server import book_server
 from runestone.api.endpoints import api, generic_validator, sql_validator, RequestValidationFailure
-from runestone.model import db, Courses, Useinfo, TimedExam, IdMixin, Web2PyBoolean, MchoiceAnswers, FitbAnswers, DragndropAnswers, ClickableareaAnswers
+from runestone.model import db, Courses, Useinfo, TimedExam, IdMixin, Web2PyBoolean, MchoiceAnswers, FitbAnswers, DragndropAnswers, ClickableareaAnswers, ParsonsAnswers, CodelensAnswers
 
 
 # Utilities
@@ -372,14 +372,76 @@ class TestRunestoneApi(BaseTest):
 
     # A common testing pattern: questions which update only if the answer is correct.
     def question_checker(self,
-        # The `hsblog endpoint` ``event`` to submit.
+        # _`event`: the `hsblog endpoint` ``event`` to submit.
         event,
-        # The SQLAlchemy model which records answers for this event.
+        # _`model`: the SQLAlchemy model which records answers for this event.
+        model,
+        # _`wrong_answer`: the wrong answer, which is submitted first.
+        wrong_answer,
+        # _`correct_answer`: the test is repeated with a correct answer.
+        correct_answer):
+
+        # Build dicts to use for testing.
+        wrong_answer_dict = dict(answer=wrong_answer, correct='F')
+        wrong_results_dict = dict(
+            answer=wrong_answer_dict['answer'],
+            correct=wrong_answer_dict['correct'] == 'T',
+            **self.common_results
+        )
+        correct_answer_dict = dict(answer=correct_answer, correct='T')
+        correct_results_dict = dict(
+            answer=correct_answer_dict['answer'],
+            correct=correct_answer_dict['correct'] == 'T',
+            **self.common_results
+        )
+
+        self.question_checker_impl(event, model, wrong_answer_dict, wrong_results_dict, correct_answer_dict, correct_results_dict)
+
+    def source_question_checker(self,
+        # See event_.
+        event,
+        # See model_.
+        model,
+        # See wrong_answer_.
+        wrong_answer,
+        # The source for this wrong answer.
+        wrong_source,
+        # See correct_answer_.
+        correct_answer,
+        # The source for this correct answer.
+        correct_source):
+
+        # Build dicts to use for testing.
+        wrong_answer_dict = dict(answer=wrong_answer, correct='F', source=wrong_source)
+        wrong_results_dict = dict(
+            answer=wrong_answer_dict['answer'],
+            correct=wrong_answer_dict['correct'] == 'T',
+            source=wrong_source,
+            **self.common_results
+        )
+        correct_answer_dict = dict(answer=correct_answer, correct='T', source=correct_source)
+        correct_results_dict = dict(
+            answer=correct_answer_dict['answer'],
+            correct=correct_answer_dict['correct'] == 'T',
+            source=correct_source,
+            **self.common_results
+        )
+
+        self.question_checker_impl(event, model, wrong_answer_dict, wrong_results_dict, correct_answer_dict, correct_results_dict)
+
+    # The core checker, which can handle answer/result pairs.
+    def question_checker_impl(self,
+        # See event_.
+        event,
+        # See model_.
         model,
         # The wrong answer, which is submitted first.
-        wrong_answer,
-        # The test is repeated with a correct answer.
-        correct_answer):
+        wrong_answer_dict,
+        # The expected database results produced by this wrong answer.
+        wrong_results_dict,
+        # The test is repeated with a correct answer and results.
+        correct_answer_dict,
+        correct_results_dict):
 
         def go(auth=True, **kwargs):
             self.get_valid_json(
@@ -396,21 +458,7 @@ class TestRunestoneApi(BaseTest):
 
             return result_remove_usual(model)
 
-        # Build dicts to use for testing.
-        wrong_answer_dict = dict(answer=wrong_answer, correct='F')
-        wrong_results_dict = dict(
-            answer=wrong_answer_dict['answer'],
-            correct=wrong_answer_dict['correct'] == 'T',
-            **self.common_results
-        )
-        correct_answer_dict = dict(answer=correct_answer, correct='T')
-        correct_results_dict = dict(
-            answer=correct_answer_dict['answer'],
-            correct=correct_answer_dict['correct'] == 'T',
-            **self.common_results
-        )
-
-        # An unauthenicated submission won't save the answer.
+        # An unauthenticated submission won't save the answer.
         assert go(False, **wrong_answer_dict) == []
 
         # Submit an incorrect answer.
@@ -432,10 +480,12 @@ class TestRunestoneApi(BaseTest):
     def test_6(self):
         self.question_checker('mChoice', MchoiceAnswers, 'A, B', 'B, C')
         self.question_checker('fillb', FitbAnswers, 'foo', 'bar')
-        # TODO: more realistic answers.
+
+        # TODO: more realistic answers for the following tests.
         self.question_checker('dragNdrop', DragndropAnswers, 'xxx', 'yyy')
-        # TODO: more realistic answers.
         self.question_checker('clickableArea', ClickableareaAnswers, 'xxx', 'yyy')
+        self.source_question_checker('parsons', ParsonsAnswers, 'xxx', 'xxx source', 'yyy', 'yyy source')
+        self.source_question_checker('codelensq', CodelensAnswers, 'xxx', 'xxx source', 'yyy', 'yyy source')
 
 
 # Web2PyBoolean tests

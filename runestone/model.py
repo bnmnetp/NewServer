@@ -246,6 +246,22 @@ class ClickableareaAnswers(db.Model, CorrectAnswerMixin):
     answer = db.Column(db.String(512))
 
 
+# An answer to a Parsons problem.
+class ParsonsAnswers(db.Model, CorrectAnswerMixin):
+    # See answer_. TODO: what is the format?
+    answer = db.Column(db.String(512))
+    # _`source`: The source code provided by a student? TODO.
+    source = db.Column(db.String(512))
+
+
+# An answer to a Code Lens problem.
+class CodelensAnswers(db.Model, CorrectAnswerMixin):
+    # See answer_. TODO: what is the format?
+    answer = db.Column(db.String(512))
+    # See source_.
+    source = db.Column(db.String(512))
+
+
 # Flask-User customization
 # ========================
 # This can't be placed in `extensions.py`, because it needs the AuthUser_ model to be defined.
