@@ -24,7 +24,7 @@ import pytest
 from base_test import BaseTest, app, LoginContext, url_joiner, result_remove_usual
 from runestone.book_server.server import book_server
 from runestone.api.endpoints import api, generic_validator, sql_validator, RequestValidationFailure
-from runestone.model import db, Courses, Useinfo, TimedExam, IdMixin, Web2PyBoolean, MchoiceAnswers, FitbAnswers
+from runestone.model import db, Courses, Useinfo, TimedExam, IdMixin, Web2PyBoolean, MchoiceAnswers, FitbAnswers, DragndropAnswers, ClickableareaAnswers
 
 
 # Utilities
@@ -378,11 +378,8 @@ class TestRunestoneApi(BaseTest):
         model,
         # The wrong answer, which is submitted first.
         wrong_answer,
-        # The expected results from the wrong answer.
-        wrong_results,
-        # The test is repeated with a correct answer and results.
-        correct_answer,
-        correct_results):
+        # The test is repeated with a correct answer.
+        correct_answer):
 
         def go(auth=True, **kwargs):
             self.get_valid_json(
@@ -399,55 +396,46 @@ class TestRunestoneApi(BaseTest):
 
             return result_remove_usual(model)
 
+        # Build dicts to use for testing.
+        wrong_answer_dict = dict(answer=wrong_answer, correct='F')
+        wrong_results_dict = dict(
+            answer=wrong_answer_dict['answer'],
+            correct=wrong_answer_dict['correct'] == 'T',
+            **self.common_results
+        )
+        correct_answer_dict = dict(answer=correct_answer, correct='T')
+        correct_results_dict = dict(
+            answer=correct_answer_dict['answer'],
+            correct=correct_answer_dict['correct'] == 'T',
+            **self.common_results
+        )
+
         # An unauthenicated submission won't save the answer.
-        assert go(False, **wrong_answer) == []
+        assert go(False, **wrong_answer_dict) == []
 
         # Submit an incorrect answer.
         with self.login_context:
-            assert go(**wrong_answer) == [wrong_results]
+            assert go(**wrong_answer_dict) == [wrong_results_dict]
         self.check_timestamp(model)
 
         # Submit a correct answer. Now, there are two answers.
-        all_results = [wrong_results, correct_results]
+        all_results = [wrong_results_dict, correct_results_dict]
         with self.login_context:
-            assert go(**correct_answer) == all_results
+            assert go(**correct_answer_dict) == all_results
         self.check_timestamp(model)
 
         # Submit a wrong answer. Nothing should be added.
         with self.login_context:
-            assert go(**wrong_answer) == all_results
+            assert go(**wrong_answer_dict) == all_results
 
-    # Test multiple choice questions.
+    # Test several answer types.
     def test_6(self):
-        wrong_answer = dict(answer='A, B', correct='F')
-        wrong_results = dict(
-            answer=wrong_answer['answer'],
-            correct=wrong_answer['correct'] == 'T',
-            **self.common_results
-        )
-        correct_answer = dict(answer='B, C', correct='T')
-        correct_results = dict(
-            answer=correct_answer['answer'],
-            correct=correct_answer['correct'] == 'T',
-            **self.common_results
-        )
-        self.question_checker('mChoice', MchoiceAnswers, wrong_answer, wrong_results, correct_answer, correct_results)
-
-    # Test fill-in-the-blank questions.
-    def test_7(self):
-        wrong_answer = dict(answer='foo', correct='F')
-        wrong_results = dict(
-            answer=wrong_answer['answer'],
-            correct=wrong_answer['correct'] == 'T',
-            **self.common_results
-        )
-        correct_answer = dict(answer='bar', correct='T')
-        correct_results = dict(
-            answer=correct_answer['answer'],
-            correct=correct_answer['correct'] == 'T',
-            **self.common_results
-        )
-        self.question_checker('fillb', FitbAnswers, wrong_answer, wrong_results, correct_answer, correct_results)
+        self.question_checker('mChoice', MchoiceAnswers, 'A, B', 'B, C')
+        self.question_checker('fillb', FitbAnswers, 'foo', 'bar')
+        # TODO: more realistic answers.
+        self.question_checker('dragNdrop', DragndropAnswers, 'xxx', 'yyy')
+        # TODO: more realistic answers.
+        self.question_checker('clickableArea', ClickableareaAnswers, 'xxx', 'yyy')
 
 
 # Web2PyBoolean tests

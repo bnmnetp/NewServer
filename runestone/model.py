@@ -240,6 +240,12 @@ class DragndropAnswers(db.Model, CorrectAnswerMixin):
     answer = db.Column(db.String(512))
 
 
+# An answer to a drag-and-drop question.
+class ClickableareaAnswers(db.Model, CorrectAnswerMixin):
+    # See answer_. TODO: what is the format?
+    answer = db.Column(db.String(512))
+
+
 # Flask-User customization
 # ========================
 # This can't be placed in `extensions.py`, because it needs the AuthUser_ model to be defined.

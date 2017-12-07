@@ -20,7 +20,7 @@ from flask_user import current_user, is_authenticated
 
 # Local imports
 # -------------
-from ..model import db, Useinfo, TimedExam, MchoiceAnswers, Courses, Questions, Web2PyBoolean, FitbAnswers, DragndropAnswers
+from ..model import db, Useinfo, TimedExam, MchoiceAnswers, Courses, Questions, Web2PyBoolean, FitbAnswers, DragndropAnswers, ClickableareaAnswers
 
 # Blueprint
 # =========
@@ -265,6 +265,8 @@ def log_book_event():
             add_if_incorrect(FitbAnswers)
         elif event == 'dragNdrop':
             add_if_incorrect(DragndropAnswers)
+        elif event == 'clickableArea':
+            add_if_incorrect(ClickableareaAnswers)
         else:
             return jsonify(log=False, is_authenticated=is_auth, error='Unknown event {}.'.format(event))
 
