@@ -20,7 +20,7 @@ from flask_user import current_user, is_authenticated
 
 # Local imports
 # -------------
-from ..model import db, Useinfo, TimedExam, MchoiceAnswers, Courses, Questions, Web2PyBoolean, FitbAnswers, DragndropAnswers, ClickableareaAnswers, ParsonsAnswers, CodelensAnswers, ShortanswerAnswers
+from ..model import db, Useinfo, TimedExam, MchoiceAnswers, Courses, Questions, Web2PyBoolean, FitbAnswers, DragndropAnswers, ClickableareaAnswers, ParsonsAnswers, CodelensAnswers, ShortanswerAnswers, LpAnswers
 
 # Blueprint
 # =========
@@ -89,6 +89,12 @@ def sql_validator(
             return int(str_val)
         except ValueError:
             raise RequestValidationFailure('Unable to convert argument {} to an integer.'.format(arg_name))
+    elif isinstance(sql_type, db.Float):
+        str_val = generic_validator(arg_name, None, '')
+        try:
+            return float(str_val)
+        except ValueError:
+            raise RequestValidationFailure('Unable to convert argument {} to an float.'.format(arg_name))
     else:
         # We don't know how to validate this type.
         assert False
@@ -152,36 +158,17 @@ def request_validation_handler(on_error_func):
 #       skipped
 #           The number of skipped problems.
 #
-#   mChoice
-#       A multiple-choice answer. Additional arguments:
-#
-#       .. _answer1:
+#   mChoice, fillb, dragNdrop, clickableArea, parsons, codelensq, shortanswer, lp_build:
+#       Answers to various question types. Additional arguments:
 #
 #       answer
-#           The answer for the question, as a string. TODO: format?
-#
-#       .. _correct:
+#           The answer for the question.
 #
 #       correct
-#           True if this answer is correct.
+#           True if this answer is correct. Exceptions: ``shortanswer`` doesn't have this parameter; for ``lp_build``, this is a grade between 0 and 100.
 #
-#   fillb
-#       A fill-in-the-blank answer. Additional arguments:
-#
-#       answer
-#           See `answer <answer1>`_. TODO: format?
-#
-#       correct
-#           See correct_.
-#
-#   dragNdrop
-#       A drag-and-drop answer. Additional args:
-#
-#       answer
-#           See `answer <answer1>`_. TODO: format?
-#
-#       correct
-#           See correct_.
+#       source
+#           TODO: Source code for the problem? Only for ``parsons`` and ``codelensq``.
 #
 # TODO: Check these changes from existing code:
 #
@@ -237,8 +224,8 @@ def log_book_event():
             if model[sid, div_id, course][True].q.count() == 0:
                 # No, so insert this answer.
                 db.session.add(model(
-                    answer=sql_validator('answer', MchoiceAnswers.answer),
-                    correct=sql_validator('correct', MchoiceAnswers.correct),
+                    answer=sql_validator('answer', model.answer),
+                    correct=sql_validator('correct', model.correct),
                     **common_kwargs,
                     **kwargs
                 ))
@@ -286,6 +273,8 @@ def log_book_event():
         elif event == 'shortanswer':
             # TODO: for shortanswers just keep the latest?? -- the history will be in useinfo.
             merge(ShortanswerAnswers, answer=sql_validator('answer', ShortanswerAnswers.answer))
+        elif event == 'lp_build':
+            add_if_incorrect(LpAnswers)
         else:
             return jsonify(log=False, is_authenticated=is_auth, error='Unknown event {}.'.format(event))
 

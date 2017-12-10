@@ -24,7 +24,7 @@ import pytest
 from base_test import BaseTest, app, LoginContext, url_joiner, result_remove_usual
 from runestone.book_server.server import book_server
 from runestone.api.endpoints import api, generic_validator, sql_validator, RequestValidationFailure
-from runestone.model import db, Courses, Useinfo, TimedExam, IdMixin, Web2PyBoolean, MchoiceAnswers, FitbAnswers, DragndropAnswers, ClickableareaAnswers, ParsonsAnswers, CodelensAnswers, ShortanswerAnswers
+from runestone.model import db, Courses, Useinfo, TimedExam, IdMixin, Web2PyBoolean, MchoiceAnswers, FitbAnswers, DragndropAnswers, ClickableareaAnswers, ParsonsAnswers, CodelensAnswers, ShortanswerAnswers, LpAnswers
 
 
 # Utilities
@@ -317,6 +317,7 @@ class TestRunestoneApi(BaseTest):
             test_string = db.Column(db.String(10))
             test_bool = db.Column(Web2PyBoolean)
             test_int = db.Column(db.Integer)
+            test_float = db.Column(db.Float)
 
         # Create generic test functions.
         def go(test_str, column):
@@ -369,6 +370,17 @@ class TestRunestoneApi(BaseTest):
         assert go_int('10') == 10
         assert go_int('0') == 0
         assert exception_go('xxx', ModelForTesting.test_int) == 'Unable to convert argument param1 to an integer.'
+
+        # **Test with a Float column***
+        #
+        # Assume missing/default args work (tested in String above).
+        def go_float(float_str):
+            return go(float_str, ModelForTesting.test_float)
+        assert go_float('-10.01') == -10.01
+        assert go_float('-1e-7') == -1e-7
+        assert go_float('10.11') == 10.11
+        assert go_float('0') == 0
+        assert exception_go('xxx', ModelForTesting.test_float) == 'Unable to convert argument param1 to an float.'
 
     # A common testing pattern: questions which update only if the answer is correct.
     def question_checker(self,
@@ -487,7 +499,26 @@ class TestRunestoneApi(BaseTest):
         self.source_question_checker('parsons', ParsonsAnswers, 'xxx', 'xxx source', 'yyy', 'yyy source')
         self.source_question_checker('codelensq', CodelensAnswers, 'xxx', 'xxx source', 'yyy', 'yyy source')
 
+        # A manual test for LP questions.
+        #
+        # Build dicts to use for testing.
+        wrong_answer_dict = dict(answer='xxx', correct='99')
+        wrong_results_dict = dict(
+            answer=wrong_answer_dict['answer'],
+            correct=float(wrong_answer_dict['correct']),
+            **self.common_results
+        )
+        correct_answer_dict = dict(answer='yyy', correct='100')
+        correct_results_dict = dict(
+            answer=correct_answer_dict['answer'],
+            correct=float(correct_answer_dict['correct']),
+            **self.common_results
+        )
+
+        self.question_checker_impl('lp_build', LpAnswers, wrong_answer_dict, wrong_results_dict, correct_answer_dict, correct_results_dict)
+
     def test_7(self):
+        # Use variables, so this could be applied to other similar events if more are defined.
         event = 'shortanswer'
         model = ShortanswerAnswers
         first_answer_dict = dict(answer='xxx')

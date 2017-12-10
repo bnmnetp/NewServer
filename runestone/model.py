@@ -9,7 +9,7 @@
 #
 # Standard library
 # ----------------
-# None
+from numbers import Number
 
 # Third-party imports
 # -------------------
@@ -265,6 +265,27 @@ class CodelensAnswers(db.Model, CorrectAnswerMixin):
 class ShortanswerAnswers(db.Model, AnswerMixin):
     # See answer_. TODO: what is the format?
     answer = db.Column(db.String(512))
+
+
+class LpAnswers(db.Model, AnswerMixin):
+    # See answer_. A JSON string; see RunestoneComponents for details. TODO: The length seems too short to me.
+    answer = db.Column(db.String(512))
+    # A grade between 0 and 100.
+    correct = db.Column(db.Float())
+
+    @classmethod
+    # To make `hsblog endpoint` code simple, accept a Boolean: True is correct (a grade of 100); False is anything else. Also support numeric queries.
+    def default_query(cls, key):
+        if isinstance(key, bool):
+            if key:
+                return cls.correct == 100
+            else:
+                return cls.correct < 100
+        # Treat any `number <https://docs.python.org/3/library/numbers.html#numbers.Number>`_ as a query of ``correct``.
+        elif isinstance(key, Number):
+            return key == cls.correct
+        else:
+            return super().default_query(key)
 
 
 # Flask-User customization
