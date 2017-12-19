@@ -319,6 +319,9 @@ class TestRunestoneApi(BaseTest):
             test_int = db.Column(db.Integer)
             test_float = db.Column(db.Float)
 
+        # The ModelForTesting table was just defined. Create it.
+        db.create_all()
+
         # Create generic test functions.
         def go(test_str, column):
             with app.test_request_context(hsblog(param1=test_str)):
