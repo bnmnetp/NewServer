@@ -145,7 +145,7 @@ class TestRunestoneApi(BaseTest):
             ))
         go()
         go()
-        r = db.session.Useinfo.sid.q.all()
+        r = db.session(Useinfo).sid.q.all()
         assert len(r) == 2
         assert r[0] == r[1]
 
