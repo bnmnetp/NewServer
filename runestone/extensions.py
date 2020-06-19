@@ -1,10 +1,28 @@
-from flask_sqlalchemy import SQLAlchemy
+# ************************************
+# |docname| - Initialize Flask plugins
+# ************************************
+#
+# Imports
+# =======
+# These are listed in the order prescribed by `PEP 8
+# <http://www.python.org/dev/peps/pep-0008/#imports>`_.
+#
+# Standard library
+# ----------------
+# None
+#
+# Third-party imports
+# -------------------
 from flask_bootstrap import Bootstrap
-from flask_security import Security, SQLAlchemySessionUserDatastore
 from flask_mail import Mail
+from pythonic_sqlalchemy_query.flask import SQLAlchemyPythonicQuery
 
-# Now create instances of our extension objects
+# Local imports
+# -------------
+# None
+#
+# Create extensions
+# =================
 bootstrap = Bootstrap()
-db = SQLAlchemy()
-security = Security()
+db = SQLAlchemyPythonicQuery()
 mail = Mail()

@@ -1,6 +1,16 @@
+# *****************************************
+# |docname| - Dependencies for this package
+# *****************************************
 Flask
 Flask-Bootstrap
 Flask-SQLAlchemy
 Flask-Script
 Flask-Migrate
+Flask-User
 psycopg2
+bcrypt
+
+# To build the docs.
+CodeChat
+Sphinx
+sphinx_rtd_theme

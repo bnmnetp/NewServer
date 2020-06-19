@@ -1,5 +1,9 @@
 #!/usr/bin/env python
-
+#
+# ***********************************
+# |docname| - Command-line management
+# ***********************************
+# Execute ``python manage.py`` for a list of available commands.
 import os
 from runestone import create_app, db
 from runestone.model import Course, LogInfo
